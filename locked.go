@@ -49,7 +49,9 @@ func (s *LockedMap[M]) Clear() int {
 	defer s.Cond.L.Unlock()
 
 	n := len(s.m)
-	s.m = make(map[M]struct{})
+	for k := range s.m {
+		delete(s.m, k)
+	}
 	return n
 }
 
