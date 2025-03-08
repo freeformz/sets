@@ -8,6 +8,7 @@ import (
 // LockedMap is a set implementation using a map and a mutex (via the sync.Cond). Instances of this type are safe to be used
 // concurrently. Iteration holds the lock for the duration of the iteration.
 type LockedMap[M comparable] struct {
+	*sync.RWMutex
 	*sync.Cond
 	iterating bool
 	m         map[M]struct{}
@@ -17,9 +18,11 @@ var _ Set[int] = new(LockedMap[int])
 
 // NewLocked returns an empty LockedMapSet instance.
 func NewLocked[M comparable]() *LockedMap[M] {
+	mu := &sync.RWMutex{}
 	return &LockedMap[M]{
-		m:    make(map[M]struct{}),
-		Cond: sync.NewCond(&sync.Mutex{}),
+		m:       make(map[M]struct{}),
+		RWMutex: mu,
+		Cond:    sync.NewCond(mu),
 	}
 }
 
@@ -33,12 +36,8 @@ func NewLockedFrom[M comparable](seq iter.Seq[M]) *LockedMap[M] {
 }
 
 func (s *LockedMap[M]) Contains(m M) bool {
-	s.Cond.L.Lock()
-	if s.iterating {
-		s.Cond.Wait()
-	}
-	defer s.Cond.L.Unlock()
-
+	s.RWMutex.RLock()
+	defer s.RWMutex.RUnlock()
 	return s.contains(m)
 }
 
@@ -89,17 +88,14 @@ func (s *LockedMap[M]) Remove(m M) bool {
 }
 
 func (s *LockedMap[M]) Cardinality() int {
-	s.Cond.L.Lock()
-	if s.iterating {
-		s.Cond.Wait()
-	}
-	defer s.Cond.L.Unlock()
+	s.RWMutex.RLock()
+	defer s.RWMutex.RUnlock()
 
 	return len(s.m)
 }
 
-// Iterator yields all elements in the set. It holds a lock for the duration of iteration, so calling other methods will block
-// until iteration is complete.
+// Iterator yields all elements in the set. It holds a lock for the duration of iteration. Calling methods other than
+// `Contains` and `Cardinality` will block until the iteration is complete.
 func (s *LockedMap[M]) Iterator(yield func(M) bool) {
 	s.Cond.L.Lock()
 	s.iterating = true

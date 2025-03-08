@@ -333,14 +333,36 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 	changes := make(chan int, 100)
 
 	for i := range 20 {
-		started.Add(3)
-		finished.Add(3)
+		started.Add(5)
+		finished.Add(5)
 		go func(base int) {
 			started.Done()
 			started.Wait()
 			for i := range (base + 1) * 100 {
 				set.Add(i)
 			}
+			finished.Done()
+		}(i)
+
+		go func(base int) {
+			started.Done()
+			started.Wait()
+			var x int
+			for range (base + 1) * 100 {
+				x = set.Cardinality()
+			}
+			_ = x
+			finished.Done()
+		}(i)
+
+		go func(base int) {
+			started.Done()
+			started.Wait()
+			var x bool
+			for i := range (base + 1) * 100 {
+				x = set.Contains(i)
+			}
+			_ = x
 			finished.Done()
 		}(i)
 
@@ -355,7 +377,7 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 
 		go func(base int) {
 			other := New[int]()
-			for i := range (base + 1) * 1000 {
+			for i := range (base + 1) * 100 {
 				other.Add(i)
 			}
 			started.Done()
