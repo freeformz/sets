@@ -1,6 +1,8 @@
 module github.com/freeformz/sets
 
-go 1.23.4
+go 1.23
+
+toolchain go1.24.1
 
 require github.com/google/go-cmp v0.7.0
 
