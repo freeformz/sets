@@ -20,53 +20,67 @@ func sortInts() cmp.Option {
 
 type SetStateMachine struct {
 	set       Set[int]
-	state     map[int]struct{}
+	stateI    map[int]int
+	stateO    []int
 	newFn     func() Set[int]
 	newFromFn func(seq iter.Seq[int]) Set[int]
+	ordered   bool
 }
 
-func TestMapSets(t *testing.T) {
+func TestMap(t *testing.T) {
 	setStateMachine := &SetStateMachine{
 		set:       New[int](),
 		newFn:     func() Set[int] { return New[int]() },
 		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewFrom[int](seq) },
-		state:     make(map[int]struct{}),
+		stateI:    make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
 	})
 }
 
-func TestSyncMapSets(t *testing.T) {
+func TestSyncMap(t *testing.T) {
 	setStateMachine := &SetStateMachine{
 		set:       NewSync[int](),
 		newFn:     func() Set[int] { return NewSync[int]() },
 		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewSyncFrom[int](seq) },
-		state:     make(map[int]struct{}),
+		stateI:    make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
 	})
 }
 
-func TestLockedMapSets(t *testing.T) {
+func TestLockedMap(t *testing.T) {
 	setStateMachine := &SetStateMachine{
-		set:       NewSync[int](),
+		set:       NewLocked[int](),
 		newFn:     func() Set[int] { return NewLocked[int]() },
 		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewLockedFrom(seq) },
-		state:     make(map[int]struct{}),
+		stateI:    make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
 	})
 }
 
-func TestOrderedMapSets(t *testing.T) {
+func TestOrderedMap(t *testing.T) {
 	setStateMachine := &SetStateMachine{
-		set:       NewSync[int](),
+		set:       NewOrdered[int](),
 		newFn:     func() Set[int] { return NewOrdered[int]() },
 		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewOrderedFrom(seq) },
-		state:     make(map[int]struct{}),
+		stateI:    make(map[int]int),
+	}
+	rapid.Check(t, func(t *rapid.T) {
+		t.Repeat(rapid.StateMachineActions(setStateMachine))
+	})
+}
+
+func TestLockedOrdered(t *testing.T) {
+	setStateMachine := &SetStateMachine{
+		set:       NewLockedOrdered[int](),
+		newFn:     func() Set[int] { return NewLockedOrdered[int]() },
+		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewLockedOrderedFrom(seq) },
+		stateI:    make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
@@ -75,25 +89,25 @@ func TestOrderedMapSets(t *testing.T) {
 
 func (sm *SetStateMachine) Add(t *rapid.T) {
 	i := rapid.Int().Draw(t, "Int")
-	_, exists := sm.state[i]
+	_, exists := sm.stateI[i]
 	if sm.set.Add(i) == exists {
 		t.Fatalf("expected %d to exist: %v", i, exists)
 	}
-	sm.state[i] = struct{}{}
+	sm.add(t, i)
 }
 
 func (sm *SetStateMachine) Remove(t *rapid.T) {
 	i := rapid.Int().Draw(t, "Int")
-	_, exists := sm.state[i]
+	_, exists := sm.stateI[i]
 	if sm.set.Remove(i) != exists {
 		t.Fatalf("expected %v to exist: %v", i, exists)
 	}
-	delete(sm.state, i)
+	sm.remove(t, i)
 }
 
 func (sm *SetStateMachine) Contains(t *rapid.T) {
 	i := rapid.Int().Draw(t, "Int")
-	_, exists := sm.state[i]
+	_, exists := sm.stateI[i]
 	if got := exists != sm.set.Contains(i); got {
 		t.Fatalf("expected %v to exist: %v", i, got)
 	}
@@ -103,7 +117,7 @@ func (sm *SetStateMachine) Clone(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Intersection(t *rapid.T) {
-	if len(sm.state) == 0 {
+	if len(sm.stateI) == 0 {
 		t.Skip("no elements to intersect")
 	}
 
@@ -115,15 +129,36 @@ func (sm *SetStateMachine) Intersection(t *rapid.T) {
 
 	got := Intersection(sm.set, other)
 	expected := sm.newFn()
-	for i := range sm.state {
-		if other.Contains(i) {
+	for _, i := range sm.stateO {
+		if other.Contains(i) && sm.set.Contains(i) {
 			expected.Add(i)
 		}
 	}
 
-	if !Equal(got, expected) {
+	if !Equal(expected, got) {
 		t.Fatalf("expected %v, got %v", Elements(expected), Elements(got))
 	}
+}
+
+func (sm *SetStateMachine) add(t *rapid.T, i int) {
+	if _, exist := sm.stateI[i]; exist {
+		return
+	}
+	sm.stateO = append(sm.stateO, i)
+	sm.stateI[i] = len(sm.stateO) - 1
+}
+
+func (sm *SetStateMachine) remove(t *rapid.T, i int) {
+	d, exist := sm.stateI[i]
+	if !exist {
+		return
+	}
+	t.Logf("remove - d: %d, i: %d", d, i)
+	sm.stateO = append(sm.stateO[:d], sm.stateO[d+1:]...)
+	for i, v := range sm.stateO[d:] {
+		sm.stateI[v] = d + i
+	}
+	delete(sm.stateI, i)
 }
 
 func (sm *SetStateMachine) AddSeq(t *rapid.T) {
@@ -133,37 +168,37 @@ func (sm *SetStateMachine) AddSeq(t *rapid.T) {
 		t.Fatalf("expected %d elements to be added, got %d", len(values), n)
 	}
 	for _, i := range values {
-		sm.state[i] = struct{}{}
+		sm.add(t, i)
 	}
 }
 
 func (sm *SetStateMachine) RemoveSeq(t *rapid.T) {
-	if len(sm.state) == 0 {
+	if len(sm.stateI) == 0 {
 		t.Skip("no elements to remove")
 	}
-	values := rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.state), func(i int) int { return i }).Draw(t, "Seq Values")
+	values := rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Seq Values")
 	n := RemoveSeq(sm.set, slices.Values(values))
 	if n != len(values) {
 		t.Fatalf("expected %d elements to be removed, got %d", len(values), n)
 	}
 	for _, i := range values {
-		delete(sm.state, i)
+		sm.remove(t, i)
 	}
 }
 
 func (sm *SetStateMachine) Union(t *rapid.T) {
 	other := sm.newFromFn(slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Union Values")))
 	for i := range other.Iterator {
-		sm.state[i] = struct{}{}
+		sm.add(t, i)
 	}
 	sm.set = Union(sm.set, other)
 }
 
 func (sm *SetStateMachine) Difference(t *rapid.T) {
 	other := sm.newFromFn(slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Difference Values")))
-	for i := range slices.Values(slices.Collect(maps.Keys(sm.state))) {
+	for i := range slices.Values(slices.Collect(maps.Keys(sm.stateI))) {
 		if other.Contains(i) {
-			delete(sm.state, i)
+			sm.remove(t, i)
 		}
 	}
 	sm.set = Difference(sm.set, other)
@@ -172,30 +207,30 @@ func (sm *SetStateMachine) Difference(t *rapid.T) {
 func (sm *SetStateMachine) SymmetricDifference(t *rapid.T) {
 	other := sm.newFromFn(slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Symmetric Difference Values")))
 	for i := range other.Iterator {
-		if _, exists := sm.state[i]; exists {
-			delete(sm.state, i)
+		if _, exists := sm.stateI[i]; exists {
+			sm.remove(t, i)
 		} else {
-			sm.state[i] = struct{}{}
+			sm.add(t, i)
 		}
 	}
 	sm.set = SymmetricDifference(sm.set, other)
 }
 
 func (sm *SetStateMachine) Subset(t *rapid.T) {
-	if len(sm.state) == 0 {
+	if len(sm.stateI) == 0 {
 		t.Skip("no elements to check for subset")
 	}
-	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.state), func(i int) int { return i }).Draw(t, "Subset Values")))
+	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Subset Values")))
 	if !Subset(other, sm.set) {
 		t.Fatalf("expected %v to be a subset of %v", Elements(other), Elements(sm.set))
 	}
 }
 
 func (sm *SetStateMachine) Superset(t *rapid.T) {
-	if len(sm.state) == 0 {
+	if len(sm.stateI) == 0 {
 		t.Skip("no elements to check for subset")
 	}
-	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.state), func(i int) int { return i }).Draw(t, "Superset Values")))
+	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Superset Values")))
 	if !Superset(sm.set, other) {
 		t.Fatalf("expected %v to be a superset of %v", Elements(sm.set), Elements(other))
 	}
@@ -214,14 +249,14 @@ func (sm *SetStateMachine) Equal(t *rapid.T) {
 
 func (sm *SetStateMachine) Elements(t *rapid.T) {
 	elem := Elements(sm.set)
-	if len(elem) != len(sm.state) {
-		t.Fatalf("expected %d elements, got %d", len(sm.state), len(elem))
+	if len(elem) != len(sm.stateI) {
+		t.Fatalf("expected %d elements, got %d", len(sm.stateI), len(elem))
 	}
 	if len(elem) != sm.set.Cardinality() {
-		t.Fatalf("expected %d elements, got %d", len(sm.state), sm.set.Cardinality())
+		t.Fatalf("expected %d elements, got %d", len(sm.stateI), sm.set.Cardinality())
 	}
 	for _, i := range elem {
-		if _, exists := sm.state[i]; !exists {
+		if _, exists := sm.stateI[i]; !exists {
 			t.Fatalf("expected %d to exist", i)
 		}
 		if !sm.set.Contains(i) {
@@ -232,9 +267,9 @@ func (sm *SetStateMachine) Elements(t *rapid.T) {
 
 func (sm *SetStateMachine) ContainsSeq(t *rapid.T) {
 	var values []int
-	if len(sm.state) > 0 {
+	if len(sm.stateI) > 0 {
 		// items in the set
-		values = rapid.SliceOfNDistinct(rapid.SampledFrom(Elements(sm.set)), 1, len(sm.state), func(i int) int { return i }).Draw(t, "Seq Values")
+		values = rapid.SliceOfNDistinct(rapid.SampledFrom(Elements(sm.set)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Seq Values")
 	}
 	if !ContainsSeq(sm.set, slices.Values(values)) {
 		t.Fatalf("expected %v to be a subset of %v", values, Elements(sm.set))
@@ -247,7 +282,7 @@ func (sm *SetStateMachine) ContainsSeq(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Disjoint(t *rapid.T) {
-	if len(sm.state) == 0 {
+	if len(sm.stateI) == 0 {
 		t.Skip("no elements to check for disjoint")
 	}
 	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Disjoint Values")))
@@ -261,23 +296,30 @@ func (sm *SetStateMachine) Disjoint(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Clear(t *rapid.T) {
-	if n := Clear(sm.set); n != len(sm.state) {
-		t.Fatalf("expected %d elements to be removed, got %d", len(sm.state), n)
+	if n := sm.set.Clear(); n != len(sm.stateI) {
+		t.Fatalf("expected %d elements to be removed, got %d", len(sm.stateI), n)
 	}
-	sm.state = make(map[int]struct{})
+	sm.stateI = make(map[int]int)
+	sm.stateO = nil
 }
 
 func (sm *SetStateMachine) Check(t *rapid.T) {
-	if len(sm.state) != sm.set.Cardinality() {
-		t.Fatalf("expected %d elements, got %d", len(sm.state), sm.set.Cardinality())
+	if len(sm.stateI) != sm.set.Cardinality() {
+		t.Fatalf("expected %d elements, got %d", len(sm.stateI), sm.set.Cardinality())
+	}
+	if len(sm.stateO) != sm.set.Cardinality() {
+		t.Fatalf("expected %d elements, got %d", len(sm.stateO), sm.set.Cardinality())
 	}
 
-	if diff := cmp.Diff(slices.Collect(maps.Keys(sm.state)), Elements(sm.set), sortInts()); diff != "" {
+	if diff := cmp.Diff(slices.Collect(maps.Keys(sm.stateI)), Elements(sm.set), sortInts()); diff != "" {
 		t.Fatalf("unexpected elements (-want +got):\n%s", diff)
 	}
+	t.Logf("set: %#v\n", sm.set)
+	t.Logf("stateI: %#v\n", sm.stateI)
+	t.Logf("stateO: %#v\n", sm.stateO)
 }
 
-func ExampleMapSets_Iterator() {
+func ExampleMap_Iterator() {
 	ints := New[int]()
 	ints.Add(5)
 	ints.Add(3)
@@ -303,7 +345,7 @@ func ExampleMapSets_Iterator() {
 	// 5
 }
 
-func ExampleOrderedSets() {
+func ExampleOrdered() {
 	ints := NewOrdered[int]()
 	ints.Add(5)
 	ints.Add(3)
