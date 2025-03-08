@@ -1,4 +1,7 @@
 // A set package with various set helper functions and set types.
+// Supports tha latest Go versions and features including generics
+// and iterators. The package is designed to be simple and easy to use
+// alongside the standard library.
 package sets
 
 import (
