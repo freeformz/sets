@@ -1,10 +1,10 @@
 package sets
 
 import (
-	"fmt"
 	"iter"
 	"maps"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,6 +27,8 @@ type SetStateMachine struct {
 }
 
 func TestMap(t *testing.T) {
+	t.Parallel()
+
 	setStateMachine := &SetStateMachine{
 		set:       New[int](),
 		newFn:     func() Set[int] { return New[int]() },
@@ -39,6 +41,8 @@ func TestMap(t *testing.T) {
 }
 
 func TestSyncMap(t *testing.T) {
+	t.Parallel()
+
 	setStateMachine := &SetStateMachine{
 		set:       NewSync[int](),
 		newFn:     func() Set[int] { return NewSync[int]() },
@@ -51,6 +55,8 @@ func TestSyncMap(t *testing.T) {
 }
 
 func TestLockedMap(t *testing.T) {
+	t.Parallel()
+
 	setStateMachine := &SetStateMachine{
 		set:       NewLocked[int](),
 		newFn:     func() Set[int] { return NewLocked[int]() },
@@ -63,6 +69,8 @@ func TestLockedMap(t *testing.T) {
 }
 
 func TestOrderedMap(t *testing.T) {
+	t.Parallel()
+
 	setStateMachine := &SetStateMachine{
 		set:       NewOrdered[int](),
 		newFn:     func() Set[int] { return NewOrdered[int]() },
@@ -75,6 +83,8 @@ func TestOrderedMap(t *testing.T) {
 }
 
 func TestLockedOrdered(t *testing.T) {
+	t.Parallel()
+
 	setStateMachine := &SetStateMachine{
 		set:       NewLockedOrdered[int](),
 		newFn:     func() Set[int] { return NewLockedOrdered[int]() },
@@ -318,53 +328,70 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 	t.Logf("stateO: %#v\n", sm.stateO)
 }
 
-func ExampleMap_Iterator() {
-	ints := New[int]()
-	ints.Add(5)
-	ints.Add(3)
-	ints.Add(2)
-	ints.Add(4)
-	ints.Add(1)
+func testSetConcurrency(t *testing.T, set Set[int]) {
+	var started, finished sync.WaitGroup
+	changes := make(chan int, 100)
 
-	out := make([]int, 0, ints.Cardinality())
-	for i := range ints.Iterator {
-		out = append(out, i)
+	for i := range 20 {
+		started.Add(3)
+		finished.Add(3)
+		go func(base int) {
+			started.Done()
+			started.Wait()
+			for i := range (base + 1) * 100 {
+				set.Add(i)
+			}
+			finished.Done()
+		}(i)
+
+		go func(base int) {
+			started.Done()
+			started.Wait()
+			for i := range (base + 1) * 100 {
+				set.Remove(i)
+			}
+			finished.Done()
+		}(i)
+
+		go func(base int) {
+			other := New[int]()
+			for i := range (base + 1) * 1000 {
+				other.Add(i)
+			}
+			started.Done()
+			started.Wait()
+			AppendSeq(other, set.Iterator)
+			RemoveSeq(set, other.Iterator)
+			finished.Done()
+		}(i)
 	}
 
-	// sort the values for consistent output
-	slices.Sort(out)
-	for _, i := range out {
-		fmt.Println(i)
-	}
-	// Output:
-	// 1
-	// 2
-	// 3
-	// 4
-	// 5
+	go func() {
+		for i := range changes {
+			set.Add(i)
+		}
+	}()
+
+	finished.Wait()
+	close(changes)
+}
+func TestLocked_Concurrency(t *testing.T) {
+	t.Parallel()
+	testSetConcurrency(t,
+		NewLockedFrom(slices.Values([]int{9, 8, 7, 6, 5, 4, 3, 2, 1})),
+	)
 }
 
-func ExampleOrdered() {
-	ints := NewOrdered[int]()
-	ints.Add(5)
-	ints.Add(3)
+func TestLockedOrdered_Concurrency(t *testing.T) {
+	t.Parallel()
+	testSetConcurrency(t,
+		NewLockedOrderedFrom(slices.Values([]int{9, 8, 7, 6, 5, 4, 3, 2, 1})),
+	)
+}
 
-	AppendSeq(ints, slices.Values([]int{2, 4, 1}))
-	AppendSeq(ints, slices.Values([]int{5, 6, 1}))
-
-	out := make([]int, 0, ints.Cardinality())
-	for i := range ints.Iterator {
-		out = append(out, i)
-	}
-
-	for _, i := range out {
-		fmt.Println(i)
-	}
-	// Output:
-	// 5
-	// 3
-	// 2
-	// 4
-	// 1
-	// 6
+func TestSync_Concurrency(t *testing.T) {
+	t.Parallel()
+	testSetConcurrency(t,
+		NewSyncFrom(slices.Values([]int{9, 8, 7, 6, 5, 4, 3, 2, 1})),
+	)
 }
