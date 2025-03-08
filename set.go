@@ -9,9 +9,8 @@ import (
 	"slices"
 )
 
-// Set is a collection of unique elements. The elements must be comparable.
-// Each set implementation must implement this interface as the set functions within this package
-// build on top of this interface.
+// Set is a collection of unique elements. The elements must be comparable. Each set implementation must implement this
+// interface as the set functions within this package build on top of this interface.
 type Set[M comparable] interface {
 	// Add an element to the set. Returns true if the element was not already in the set.
 	Add(M) bool
@@ -28,9 +27,10 @@ type Set[M comparable] interface {
 	// Contains returns true if the set contains the element.
 	Contains(M) bool
 
-	// Iterator for the set. The yield function is called for each element in the set.
-	// If yield function returns false, the iteration is stopped. The order of iteration
-	// is not guaranteed. Changing the set while iterating over it is undefined behavior.
+	// Iterator for the set elements. The yield function is called for each element in the set. If the yield function
+	// returns false, the iteration is stopped. The order of iteration is not guaranteed unless the set is ordered.
+	// Changing the set while iterating over it is undefined. It may or may not be safe to change the set or allowed
+	// based on the implementation in use. Implementations must document their iteration safety.
 	Iterator(yield func(M) bool)
 
 	// Remove an element from the set. Returns true if the element was in the set.

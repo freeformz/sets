@@ -103,6 +103,8 @@ func (s *LockedOrdered[M]) Cardinality() int {
 	return len(s.values)
 }
 
+// Iterator yields all elements in the set in order. It holds a lock for the duration of iteration, so calling other methods will block
+// until iteration is complete.
 func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
 	s.Cond.L.Lock()
 	s.iterating = true

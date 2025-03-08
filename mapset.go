@@ -55,6 +55,7 @@ func (s Map[M]) Cardinality() int {
 	return len(s)
 }
 
+// Iterator yields all elements in the set.
 func (s Map[M]) Iterator(yield func(M) bool) {
 	for k := range s {
 		if !yield(k) {
