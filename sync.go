@@ -63,6 +63,8 @@ func (s *SyncMap[M]) Cardinality() int {
 	return n
 }
 
+// Iterator yields all elements in the set. It is safe to call concurrently with other methods, but the order and
+// behavior is undefined, as per [sync.Map]'s `Range`.
 func (s *SyncMap[M]) Iterator(yield func(M) bool) {
 	s.m.Range(func(key, _ interface{}) bool {
 		return yield(key.(M))

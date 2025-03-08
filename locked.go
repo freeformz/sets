@@ -5,8 +5,8 @@ import (
 	"sync"
 )
 
-// LockedMap is a set implementation using a map and a read-write mutex. Instances of this type are safe to be used
-// concurrently. Iteration holds the read lock for the duration of the iteration.
+// LockedMap is a set implementation using a map and a mutex (via the sync.Cond). Instances of this type are safe to be used
+// concurrently. Iteration holds the lock for the duration of the iteration.
 type LockedMap[M comparable] struct {
 	*sync.Cond
 	iterating bool
@@ -98,6 +98,8 @@ func (s *LockedMap[M]) Cardinality() int {
 	return len(s.m)
 }
 
+// Iterator yields all elements in the set. It holds a lock for the duration of iteration, so calling other methods will block
+// until iteration is complete.
 func (s *LockedMap[M]) Iterator(yield func(M) bool) {
 	s.Cond.L.Lock()
 	s.iterating = true

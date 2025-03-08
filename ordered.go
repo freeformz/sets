@@ -68,6 +68,7 @@ func (s *Ordered[M]) Cardinality() int {
 	return len(s.values)
 }
 
+// Iterator yields all elements in the set in order.
 func (s *Ordered[M]) Iterator(yield func(M) bool) {
 	for _, k := range s.values {
 		if !yield(k) {
