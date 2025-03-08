@@ -11,7 +11,7 @@ A generics based go set package that supports modern go features.
 Use go get to install this package.
 
 ```console
-go get github.com/freeformx/set
+go get github.com/freeformz/set
 ```
 
 ## Features
