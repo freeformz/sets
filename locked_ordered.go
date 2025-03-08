@@ -3,14 +3,13 @@ package set
 import (
 	"iter"
 	"sync"
-	"sync/atomic"
 )
 
-// LockedOrdered is a set implementation that maintains the order of elements. If the same item is added multiple times,
-// the first insertion determines the order.
+// LockedOrdered is a set implementation that maintains the order of elements and is safe for concurrent use. If the
+// same item is added multiple times, the first insertion determines the order.
 type LockedOrdered[M comparable] struct {
-	sync.RWMutex
-	iteration atomic.Bool
+	*sync.Cond
+	iterating bool
 	idx       map[M]int
 	values    []M
 }
@@ -22,6 +21,7 @@ func NewLockedOrdered[M comparable]() *LockedOrdered[M] {
 	return &LockedOrdered[M]{
 		idx:    make(map[M]int),
 		values: make([]M, 0),
+		Cond:   sync.NewCond(&sync.Mutex{}),
 	}
 }
 
@@ -35,18 +35,20 @@ func NewLockedOrderedFrom[M comparable](seq iter.Seq[M]) *LockedOrdered[M] {
 }
 
 func (s *LockedOrdered[M]) Contains(m M) bool {
-	if !s.iteration.Load() {
-		s.RLock()
-		defer s.RUnlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 	return s.contains(m)
 }
 
 func (s *LockedOrdered[M]) Clear() int {
-	if !s.iteration.Load() {
-		s.Lock()
-		defer s.Unlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 	n := len(s.values)
 	for k := range s.idx {
 		delete(s.idx, k)
@@ -61,10 +63,11 @@ func (s *LockedOrdered[M]) contains(m M) bool {
 }
 
 func (s *LockedOrdered[M]) Add(m M) bool {
-	if !s.iteration.Load() {
-		s.Lock()
-		defer s.Unlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 	if s.contains(m) {
 		return false
 	}
@@ -74,10 +77,11 @@ func (s *LockedOrdered[M]) Add(m M) bool {
 }
 
 func (s *LockedOrdered[M]) Remove(m M) bool {
-	if !s.iteration.Load() {
-		s.Lock()
-		defer s.Unlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 	if !s.contains(m) {
 		return false
 	}
@@ -91,20 +95,21 @@ func (s *LockedOrdered[M]) Remove(m M) bool {
 }
 
 func (s *LockedOrdered[M]) Cardinality() int {
-	if !s.iteration.Load() {
-		s.RLock()
-		defer s.RUnlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 	return len(s.values)
 }
 
 func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
-	for !s.iteration.CompareAndSwap(false, true) {
-	}
-	s.RLock()
+	s.Cond.L.Lock()
+	s.iterating = true
 	defer func() {
-		s.iteration.Store(false)
-		s.RUnlock()
+		s.iterating = false
+		s.Cond.Broadcast()
+		s.Cond.L.Unlock()
 	}()
 
 	for _, k := range s.values {
