@@ -24,7 +24,6 @@ type SetStateMachine struct {
 	stateO    []int
 	newFn     func() Set[int]
 	newFromFn func(seq iter.Seq[int]) Set[int]
-	ordered   bool
 }
 
 func TestMap(t *testing.T) {
