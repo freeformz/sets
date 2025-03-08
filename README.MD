@@ -27,8 +27,30 @@ go get github.com/freeformz/sets
   * `NewLockedOrdered()` -> ordered set that is concurrency safe.
 * `set` package functions align with standard lib packages like `slices` and `maps`.
 * Exhaustive unit tests via [rapid](https://github.com/flyingmutant/rapid).
-* [TODO] Exhaustive examples.
+* Somewhat exhaustive examples.
 
 ## Usage
 
-`TODO`
+See the package level [examples](https://pkg.go.dev/github.com/freeformz/sets#pkg-examples) for a more exhaustive set of examples.
+
+```go
+  a := New[string]()
+  a.Add("hi")
+  a.Add("there")
+
+  a.Cardinality() // 2
+  a.Contains("bob") // false
+  a.Contains("hi") // true
+
+  a.Remove("bob") // false
+  a.Remove("hi") // true
+
+  b := New[string]()
+  b.Add("there")
+
+  set.Equal(a,b) // false
+  b.Add("hi")
+  set.Equal(a,b) // true
+
+  ...
+```
