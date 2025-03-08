@@ -3,15 +3,14 @@ package sets
 import (
 	"iter"
 	"sync"
-	"sync/atomic"
 )
 
 // LockedMap is a set implementation using a map and a read-write mutex. Instances of this type are safe to be used
 // concurrently. Iteration holds the read lock for the duration of the iteration.
 type LockedMap[M comparable] struct {
-	sync.RWMutex
+	*sync.Cond
+	iterating bool
 	m         map[M]struct{}
-	iterating atomic.Bool
 }
 
 var _ Set[int] = new(LockedMap[int])
@@ -19,7 +18,8 @@ var _ Set[int] = new(LockedMap[int])
 // NewLocked returns an empty LockedMapSets instance.
 func NewLocked[M comparable]() *LockedMap[M] {
 	return &LockedMap[M]{
-		m: make(map[M]struct{}),
+		m:    make(map[M]struct{}),
+		Cond: sync.NewCond(&sync.Mutex{}),
 	}
 }
 
@@ -33,19 +33,22 @@ func NewLockedFrom[M comparable](seq iter.Seq[M]) *LockedMap[M] {
 }
 
 func (s *LockedMap[M]) Contains(m M) bool {
-	if !s.iterating.Load() {
-		s.RLock()
-		defer s.RUnlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 
 	return s.contains(m)
 }
 
 func (s *LockedMap[M]) Clear() int {
-	if !s.iterating.Load() {
-		s.Lock()
-		defer s.Unlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
+
 	n := len(s.m)
 	s.m = make(map[M]struct{})
 	return n
@@ -57,10 +60,11 @@ func (s *LockedMap[M]) contains(m M) bool {
 }
 
 func (s *LockedMap[M]) Add(m M) bool {
-	if !s.iterating.Load() {
-		s.Lock()
-		defer s.Unlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 
 	if s.contains(m) {
 		return false
@@ -71,10 +75,11 @@ func (s *LockedMap[M]) Add(m M) bool {
 }
 
 func (s *LockedMap[M]) Remove(m M) bool {
-	if !s.iterating.Load() {
-		s.Lock()
-		defer s.Unlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
 
 	if !s.contains(m) {
 		return false
@@ -84,20 +89,22 @@ func (s *LockedMap[M]) Remove(m M) bool {
 }
 
 func (s *LockedMap[M]) Cardinality() int {
-	if !s.iterating.Load() {
-		s.RLock()
-		defer s.RUnlock()
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
 	}
+	defer s.Cond.L.Unlock()
+
 	return len(s.m)
 }
 
 func (s *LockedMap[M]) Iterator(yield func(M) bool) {
-	for !s.iterating.CompareAndSwap(false, true) {
-	}
-	s.RLock()
+	s.Cond.L.Lock()
+	s.iterating = true
 	defer func() {
-		s.iterating.Store(false)
-		s.RUnlock()
+		s.iterating = false
+		s.Cond.Broadcast()
+		s.Cond.L.Unlock()
 	}()
 	for k := range s.m {
 		if !yield(k) {
