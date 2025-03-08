@@ -16,6 +16,9 @@ type Set[M comparable] interface {
 	// Cardinality of the set (number of elements in the set).
 	Cardinality() int
 
+	// Clear removes all elements from the set and returns the number of elements removed.
+	Clear() int
+
 	// Clone returns a deep copy of the set.
 	Clone() Set[M]
 
@@ -34,17 +37,6 @@ type Set[M comparable] interface {
 // Elements returns a slice of all elements in the set. This is a convenience wrapper around slices.Collect(s.Iterator)
 func Elements[K comparable](s Set[K]) []K {
 	return slices.Collect(s.Iterator)
-}
-
-// Clear removes all elements from the set. Returns the number of elements removed.
-func Clear[K comparable](s Set[K]) int {
-	var n int
-	for _, k := range slices.Collect(s.Iterator) {
-		if s.Remove(k) {
-			n++
-		}
-	}
-	return n
 }
 
 // AppendSeq appends all elements from the sequence to the set.
