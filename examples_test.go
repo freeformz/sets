@@ -13,17 +13,11 @@ func ExampleSet_Iterator() {
 	ints.Add(4)
 	ints.Add(1)
 
-	out := make([]int, 0, ints.Cardinality())
 	for i := range ints.Iterator {
-		out = append(out, i)
-	}
-
-	// sort the values for consistent output
-	slices.Sort(out)
-	for _, i := range out {
 		fmt.Println(i)
 	}
-	// Output:
+
+	// Unsorted output:
 	// 1
 	// 2
 	// 3
@@ -100,11 +94,10 @@ func ExampleElements() {
 
 	// []T is returned
 	elements := Elements(ints)
-	slices.Sort(elements) // sorted for stable outputs
 	for _, i := range elements {
 		fmt.Println(i)
 	}
-	// Output:
+	// Unsorted output:
 	// 2
 	// 3
 	// 5
@@ -207,15 +200,10 @@ func ExampleSymmetricDifference() {
 	b.Add(2)
 
 	c := SymmetricDifference(a, b)
-	out := make([]int, 0, c.Cardinality())
 	for i := range c.Iterator {
-		out = append(out, i)
-	}
-	slices.Sort(out)
-	for _, i := range out {
 		fmt.Println(i)
 	}
-	// Output:
+	// Unordered output:
 	// 2
 	// 5
 }
@@ -329,4 +317,102 @@ func ExampleDisjoint() {
 	// Output:
 	// a and b are disjoint
 	// a and b are not disjoint now
+}
+
+func ExampleEqualOrdered() {
+	a := NewOrdered[int]()
+	a.Add(5)
+	a.Add(3)
+	a.Add(1)
+
+	b := NewOrdered[int]()
+	b.Add(5)
+	b.Add(3)
+	b.Add(1)
+
+	if EqualOrdered(a, b) {
+		fmt.Println("a and b are equal")
+	}
+
+	b.Add(2)
+	if !EqualOrdered(a, b) {
+		fmt.Println("a and b are not equal now")
+	}
+	// Output:
+	// a and b are equal
+	// a and b are not equal now
+}
+
+func ExampleMin() {
+	ints := New[int]()
+	ints.Add(3)
+	ints.Add(2)
+	ints.Add(5)
+
+	min := Min(ints)
+	fmt.Println(min)
+	// Output: 2
+}
+
+func ExampleMax() {
+	ints := New[int]()
+	ints.Add(3)
+	ints.Add(5)
+	ints.Add(2)
+
+	max := Max(ints)
+	fmt.Println(max)
+	// Output: 5
+}
+
+func ExampleIsSorted() {
+	ints := NewOrdered[int]()
+	ints.Add(2)
+	ints.Add(3)
+	ints.Add(5)
+
+	if IsSorted(ints) {
+		fmt.Println("ints is sorted")
+	}
+
+	ints.Add(4)
+	if !IsSorted(ints) {
+		fmt.Println("ints is not sorted now")
+	}
+
+	ints.Sort()
+	if IsSorted(ints) {
+		fmt.Println("ints is sorted")
+	}
+	// Output:
+	// ints is sorted
+	// ints is not sorted now
+	// ints is sorted
+}
+
+func ExampleReverse() {
+	ints := NewOrdered[int]()
+	ints.Add(2)
+	ints.Add(3)
+	ints.Add(5)
+
+	reversed := Reverse(ints)
+	for i := range reversed.Iterator {
+		fmt.Println(i)
+	}
+	// Output:
+	// 5
+	// 3
+	// 2
+}
+
+func ExampleSet_String() {
+	// using an ordered set for consistent output
+	ints := NewOrdered[int]()
+	ints.Add(5)
+	ints.Add(3)
+	ints.Add(2)
+
+	fmt.Println(ints)
+	// Output: OrderedSet[int]([5 3 2])
 }

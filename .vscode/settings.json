@@ -1,5 +1,6 @@
 {
     "go.testFlags": [
-        "-rapid.v"
+        // "-rapid.v"
+        "-test.count","1",
     ]
 }

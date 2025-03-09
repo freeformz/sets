@@ -6,6 +6,8 @@
 
 A generics based go set package that supports modern go features.
 
+NOTE: This is currently a WIP
+
 ## Install
 
 Use go get to install this package.
@@ -23,7 +25,7 @@ go get github.com/freeformz/sets
   * `New()` -> Map based set;
   * `NewLocked()` -> Map based that uses a lock to be concurrency safe;
   * `NewSync()` -> sync.Map based (concurrency safe);
-  * `NewOrdered()` -> ordred set (uses a map for indexes and a slice for order);
+  * `NewOrdered()` -> ordered set (uses a map for indexes and a slice for order);
   * `NewLockedOrdered()` -> ordered set that is concurrency safe.
 * `set` package functions align with standard lib packages like `slices` and `maps`.
 * Exhaustive unit tests via [rapid](https://github.com/flyingmutant/rapid).
@@ -54,3 +56,8 @@ See the package level [examples](https://pkg.go.dev/github.com/freeformz/sets#pk
 
   ...
 ```
+
+## TODOs
+
+* Ordered rapid tests that test the OrderedSet bits like the normal Set bits are tested.
+* More examples?

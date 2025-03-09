@@ -5,29 +5,27 @@ import (
 	"sync"
 )
 
-// LockedMap is a set implementation using a map and a mutex (via the sync.Cond). Instances of this type are safe to be used
-// concurrently. Iteration holds the lock for the duration of the iteration.
-type LockedMap[M comparable] struct {
+type lockedMap[M comparable] struct {
 	*sync.RWMutex
 	*sync.Cond
 	iterating bool
-	m         map[M]struct{}
+	set       Set[M]
 }
 
-var _ Set[int] = new(LockedMap[int])
+var _ Set[int] = new(lockedMap[int])
 
-// NewLocked returns an empty LockedMapSets instance.
-func NewLocked[M comparable]() *LockedMap[M] {
+// NewLocked returns an empty Set[M] that is safe for concurrent use.
+func NewLocked[M comparable]() Set[M] {
 	mu := &sync.RWMutex{}
-	return &LockedMap[M]{
-		m:       make(map[M]struct{}),
+	return &lockedMap[M]{
+		set:     New[M](),
 		RWMutex: mu,
 		Cond:    sync.NewCond(mu),
 	}
 }
 
-// NewLockedFrom returns a new LockedMapSets instance filled with the values from the sequence.
-func NewLockedFrom[M comparable](seq iter.Seq[M]) *LockedMap[M] {
+// NewLockedFrom returns a new Set[M] filled with the values from the sequence.
+func NewLockedFrom[M comparable](seq iter.Seq[M]) Set[M] {
 	s := NewLocked[M]()
 	for x := range seq {
 		s.Add(x)
@@ -35,70 +33,77 @@ func NewLockedFrom[M comparable](seq iter.Seq[M]) *LockedMap[M] {
 	return s
 }
 
-func (s *LockedMap[M]) Contains(m M) bool {
+type locker interface {
+	Lock()
+	Unlock()
+	RLock()
+	RUnlock()
+	Wait()
+	Broadcast()
+}
+
+// NewLockedWith returns a Set[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
+// then the returned set is wrapped so that it is safe for concurrent use.
+func NewLockedWith[M comparable](set Set[M]) Set[M] {
+	if _, lok := set.(locker); lok {
+		return set
+	}
+	mu := &sync.RWMutex{}
+	return &lockedMap[M]{
+		set:     set,
+		RWMutex: mu,
+		Cond:    sync.NewCond(mu),
+	}
+}
+
+func (s *lockedMap[M]) Contains(m M) bool {
 	s.RWMutex.RLock()
 	defer s.RWMutex.RUnlock()
-	return s.contains(m)
+	return s.set.Contains(m)
 }
 
-func (s *LockedMap[M]) Clear() int {
+func (s *lockedMap[M]) Clear() int {
+	s.Cond.L.Lock()
+	if s.iterating {
+		s.Cond.Wait()
+	}
+	defer s.Cond.L.Unlock()
+	return s.set.Clear()
+}
+
+func (s *lockedMap[M]) Add(m M) bool {
 	s.Cond.L.Lock()
 	if s.iterating {
 		s.Cond.Wait()
 	}
 	defer s.Cond.L.Unlock()
 
-	n := len(s.m)
-	for k := range s.m {
-		delete(s.m, k)
-	}
-	return n
+	return s.set.Add(m)
 }
 
-func (s *LockedMap[M]) contains(m M) bool {
-	_, ok := s.m[m]
-	return ok
-}
-
-func (s *LockedMap[M]) Add(m M) bool {
+func (s *lockedMap[M]) Remove(m M) bool {
 	s.Cond.L.Lock()
 	if s.iterating {
 		s.Cond.Wait()
 	}
 	defer s.Cond.L.Unlock()
 
-	if s.contains(m) {
-		return false
-	}
-	s.m[m] = struct{}{}
-
-	return true
+	return s.set.Remove(m)
 }
 
-func (s *LockedMap[M]) Remove(m M) bool {
-	s.Cond.L.Lock()
-	if s.iterating {
-		s.Cond.Wait()
+func (s *lockedMap[M]) Cardinality() int {
+	if s == nil {
+		return 0
 	}
-	defer s.Cond.L.Unlock()
-
-	if !s.contains(m) {
-		return false
-	}
-	delete(s.m, m)
-	return true
-}
-
-func (s *LockedMap[M]) Cardinality() int {
 	s.RWMutex.RLock()
 	defer s.RWMutex.RUnlock()
 
-	return len(s.m)
+	return s.set.Cardinality()
 }
 
 // Iterator yields all elements in the set. It holds a lock for the duration of iteration. Calling methods other than
 // `Contains` and `Cardinality` will block until the iteration is complete.
-func (s *LockedMap[M]) Iterator(yield func(M) bool) {
+func (s *lockedMap[M]) Iterator(yield func(M) bool) {
 	s.Cond.L.Lock()
 	s.iterating = true
 	defer func() {
@@ -106,13 +111,20 @@ func (s *LockedMap[M]) Iterator(yield func(M) bool) {
 		s.Cond.Broadcast()
 		s.Cond.L.Unlock()
 	}()
-	for k := range s.m {
-		if !yield(k) {
-			return
-		}
-	}
+
+	s.set.Iterator(yield)
 }
 
-func (s *LockedMap[M]) Clone() Set[M] {
+func (s *lockedMap[M]) Clone() Set[M] {
 	return NewLockedFrom(s.Iterator)
+}
+
+func (s *lockedMap[M]) NewEmpty() Set[M] {
+	return NewLocked[M]()
+}
+
+func (s *lockedMap[M]) String() string {
+	s.RLock()
+	defer s.RUnlock()
+	return "Locked" + s.set.String()
 }
