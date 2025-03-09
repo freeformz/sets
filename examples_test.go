@@ -416,3 +416,19 @@ func ExampleSet_String() {
 	fmt.Println(ints)
 	// Output: OrderedSet[int]([5 3 2])
 }
+
+func ExampleSorted() {
+	ints := NewOrdered[int]()
+	ints.Add(2)
+	ints.Add(5)
+	ints.Add(3)
+
+	sorted := Sorted(ints)
+	for i := range sorted.Iterator {
+		fmt.Println(i)
+	}
+	// Output:
+	// 2
+	// 3
+	// 5
+}
