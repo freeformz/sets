@@ -86,6 +86,7 @@ These helpers work on all OrderedSet types.
 * `sets.EqualOrdered(aOrderedSet, bOrderedSet)` : Returns true if the two OrderedSets contain the same elements in the same order.
 * `sets.IsSorted(aOrderedSet)` : Returns true if the OrderedSet is sorted in ascending order.
 * `sets.Reverse(aOrderedSet)` :  Returns a new OrderedSet with the elements in the reverse order of the original OrderedSet.
+* `sets.Sorted(aOrderedSet)` : Return a copy of aOrderedSet with the elements sorted in ascending order. Does not modify the original set.
 
 ## TODOs
 

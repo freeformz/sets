@@ -29,7 +29,7 @@ type OrderedSet[M cmp.Ordered] interface {
 	// Index returns the index of the element in the set, or -1 if not present.
 	Index(M) int
 
-	// Sort the set in ascending order in place.
+	// Sort the set in ascending order.
 	Sort()
 
 	// NewEmptyOrdered returns a new empty ordered set of the same underlying type.
@@ -72,5 +72,12 @@ func Reverse[K cmp.Ordered](s OrderedSet[K]) OrderedSet[K] {
 			return yield(k)
 		})
 	})
+	return out
+}
+
+// Sorted copy of the set. The original set is not modified.
+func Sorted[K cmp.Ordered](s OrderedSet[K]) OrderedSet[K] {
+	out := s.Clone().(OrderedSet[K])
+	out.Sort()
 	return out
 }
