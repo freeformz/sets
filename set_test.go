@@ -1,7 +1,6 @@
 package set
 
 import (
-	"iter"
 	"maps"
 	"slices"
 	"sync"
@@ -19,21 +18,17 @@ func sortInts() cmp.Option {
 }
 
 type SetStateMachine struct {
-	set       Set[int]
-	stateI    map[int]int
-	stateO    []int
-	newFn     func() Set[int]
-	newFromFn func(seq iter.Seq[int]) Set[int]
+	set    Set[int]
+	stateI map[int]int
+	stateO []int
 }
 
 func TestMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:       New[int](),
-		newFn:     func() Set[int] { return New[int]() },
-		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewFrom[int](seq) },
-		stateI:    make(map[int]int),
+		set:    New[int](),
+		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
@@ -44,10 +39,8 @@ func TestSyncMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:       NewSync[int](),
-		newFn:     func() Set[int] { return NewSync[int]() },
-		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewSyncFrom[int](seq) },
-		stateI:    make(map[int]int),
+		set:    NewSync[int](),
+		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
@@ -58,10 +51,8 @@ func TestLockedMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:       NewLocked[int](),
-		newFn:     func() Set[int] { return NewLocked[int]() },
-		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewLockedFrom(seq) },
-		stateI:    make(map[int]int),
+		set:    NewLocked[int](),
+		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
@@ -72,10 +63,8 @@ func TestOrderedMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:       NewOrdered[int](),
-		newFn:     func() Set[int] { return NewOrdered[int]() },
-		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewOrderedFrom(seq) },
-		stateI:    make(map[int]int),
+		set:    NewOrdered[int](),
+		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
@@ -86,10 +75,8 @@ func TestLockedOrdered(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:       NewLockedOrdered[int](),
-		newFn:     func() Set[int] { return NewLockedOrdered[int]() },
-		newFromFn: func(seq iter.Seq[int]) Set[int] { return NewLockedOrderedFrom(seq) },
-		stateI:    make(map[int]int),
+		set:    NewLockedOrdered[int](),
+		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
 		t.Repeat(rapid.StateMachineActions(setStateMachine))
@@ -130,14 +117,15 @@ func (sm *SetStateMachine) Intersection(t *rapid.T) {
 		t.Skip("no elements to intersect")
 	}
 
-	other := sm.newFromFn(slices.Values(
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(
 		rapid.SliceOfNDistinct(
 			rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 0, sm.set.Cardinality(), func(i int) int { return i },
 		).Draw(t, "Intersecting Set"),
 	))
 
 	got := Intersection(sm.set, other)
-	expected := sm.newFn()
+	expected := sm.set.NewEmpty()
 	for _, i := range sm.stateO {
 		if other.Contains(i) && sm.set.Contains(i) {
 			expected.Add(i)
@@ -196,7 +184,8 @@ func (sm *SetStateMachine) RemoveSeq(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Union(t *rapid.T) {
-	other := sm.newFromFn(slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Union Values")))
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Union Values")))
 	for i := range other.Iterator {
 		sm.add(t, i)
 	}
@@ -204,7 +193,8 @@ func (sm *SetStateMachine) Union(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Difference(t *rapid.T) {
-	other := sm.newFromFn(slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Difference Values")))
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Difference Values")))
 	for i := range slices.Values(slices.Collect(maps.Keys(sm.stateI))) {
 		if other.Contains(i) {
 			sm.remove(t, i)
@@ -214,7 +204,8 @@ func (sm *SetStateMachine) Difference(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) SymmetricDifference(t *rapid.T) {
-	other := sm.newFromFn(slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Symmetric Difference Values")))
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Symmetric Difference Values")))
 	for i := range other.Iterator {
 		if _, exists := sm.stateI[i]; exists {
 			sm.remove(t, i)
@@ -229,7 +220,8 @@ func (sm *SetStateMachine) Subset(t *rapid.T) {
 	if len(sm.stateI) == 0 {
 		t.Skip("no elements to check for subset")
 	}
-	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Subset Values")))
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Subset Values")))
 	if !Subset(other, sm.set) {
 		t.Fatalf("expected %v to be a subset of %v", Elements(other), Elements(sm.set))
 	}
@@ -239,7 +231,8 @@ func (sm *SetStateMachine) Superset(t *rapid.T) {
 	if len(sm.stateI) == 0 {
 		t.Skip("no elements to check for subset")
 	}
-	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Superset Values")))
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "Superset Values")))
 	if !Superset(sm.set, other) {
 		t.Fatalf("expected %v to be a superset of %v", Elements(sm.set), Elements(other))
 	}
@@ -294,7 +287,8 @@ func (sm *SetStateMachine) Disjoint(t *rapid.T) {
 	if len(sm.stateI) == 0 {
 		t.Skip("no elements to check for disjoint")
 	}
-	other := sm.newFromFn(slices.Values(rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Disjoint Values")))
+	other := sm.set.NewEmpty()
+	AppendSeq(other, slices.Values(rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Disjoint Values")))
 	if !Disjoint(sm.set, other) {
 		t.Fatalf("expected %v and %v to be disjoint", Elements(sm.set), Elements(other))
 	}
