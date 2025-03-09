@@ -71,14 +71,14 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 	return n
 }
 
-// Union of the two sets. Returns a new set with all elements from both sets.
+// Union of the two sets. Returns a new set (of the same underling type as a) with all elements from both sets.
 func Union[K comparable](a, b Set[K]) Set[K] {
 	c := a.Clone()
 	AppendSeq(c, b.Iterator)
 	return c
 }
 
-// Intersection of the two sets. Returns a new set with elements that are in both sets.
+// Intersection of the two sets. Returns a new set (of the same underlying type as a) with elements that are in both sets.
 func Intersection[K comparable](a, b Set[K]) Set[K] {
 	c := a.Clone()
 	for k := range a.Iterator {
@@ -89,7 +89,7 @@ func Intersection[K comparable](a, b Set[K]) Set[K] {
 	return c
 }
 
-// Difference of the two sets. Returns a new set with elements that are in the first set but not in the second set.
+// Difference of the two sets. Returns a new set (of the same underlying type as a) with elements that are in the first set but not in the second set.
 func Difference[K comparable](a, b Set[K]) Set[K] {
 	c := a.Clone()
 	for k := range a.Iterator {
@@ -100,7 +100,7 @@ func Difference[K comparable](a, b Set[K]) Set[K] {
 	return c
 }
 
-// SymmetricDifference of the two sets. Returns a new set with elements that are not in both sets.
+// SymmetricDifference of the two sets. Returns a new set (of the same underlying type as a) with elements that are not in both sets.
 func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
 	c := a.Clone()
 	for k := range b.Iterator {
@@ -221,6 +221,7 @@ func Min[K cmp.Ordered](s Set[K]) K {
 	return mn
 }
 
+// Chunk the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
 func Chunk[K comparable](s Set[K], n int) iter.Seq[Set[K]] {
 	return func(yield func(Set[K]) bool) {
 		chunk := s.NewEmpty()
