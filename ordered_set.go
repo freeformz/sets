@@ -2,7 +2,6 @@ package set
 
 import (
 	"cmp"
-	"slices"
 )
 
 // OrderedSet is an extended set interface that implementations can implement to indicate that the set is ordered.
@@ -37,22 +36,23 @@ type OrderedSet[M cmp.Ordered] interface {
 	NewEmptyOrdered() OrderedSet[M]
 }
 
-// EqualOrdered returns true if the two OrderedSets contain the same elements in the same order.
+// EqualOrdered returns true if the two OrderedSets contain the same elements in the same order. [cmp.Compare] is used
+// to compare elements.
 func EqualOrdered[K cmp.Ordered](a, b OrderedSet[K]) bool {
 	// can't be equal if they don't have the same cardinality
 	if a.Cardinality() != b.Cardinality() {
 		return false
 	}
-	bv := slices.Collect(b.Iterator)
-	for ai, ak := range a.Ordered {
-		if ak != bv[ai] {
+	for i, ak := range a.Ordered {
+		bv, ok := b.At(i)
+		if !ok || cmp.Compare(ak, bv) != 0 {
 			return false
 		}
 	}
 	return true
 }
 
-// IsSorted returns true if the OrderedSet is sorted in ascending order.
+// IsSorted returns true if the OrderedSet is sorted in ascending order. [cmp.Less] is used to compare elements.
 func IsSorted[K cmp.Ordered](s OrderedSet[K]) bool {
 	var prev K
 	for i, k := range s.Ordered {
