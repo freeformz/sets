@@ -6,7 +6,7 @@
 
 A generics based go set package that supports modern go features.
 
-NOTE: This is currently a WIP
+NOTE: This is currently a WIP, but I hope to stabilize the API soon.
 
 ## Install
 
