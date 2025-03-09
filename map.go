@@ -1,33 +1,34 @@
 package set
 
-import "iter"
+import (
+	"fmt"
+	"iter"
+	"maps"
+	"slices"
+)
 
-// Map is a set implementation using the built in map type.
-// Instances of this type are not safe to be used concurrently.
-type Map[M comparable] map[M]struct{}
+type mapSet[M comparable] map[M]struct{}
 
-var _ Set[int] = Map[int]{}
-
-// New returns an empty MapSet instance.
-func New[M comparable]() Map[M] {
-	return make(Map[M])
+// New returns an empty Set[M] instance.
+func New[M comparable]() Set[M] {
+	return make(mapSet[M])
 }
 
-// NewFrom returns a new MapSet instance filled with the values from the sequence.
-func NewFrom[M comparable](seq iter.Seq[M]) Map[M] {
-	s := make(Map[M])
+// NewFrom returns a new Set[M] filled with the values from the sequence.
+func NewFrom[M comparable](seq iter.Seq[M]) Set[M] {
+	s := make(mapSet[M])
 	for x := range seq {
 		s.Add(x)
 	}
 	return s
 }
 
-func (s Map[M]) Contains(m M) bool {
+func (s mapSet[M]) Contains(m M) bool {
 	_, ok := s[m]
 	return ok
 }
 
-func (s Map[M]) Clear() int {
+func (s mapSet[M]) Clear() int {
 	n := len(s)
 	for k := range s {
 		delete(s, k)
@@ -35,7 +36,7 @@ func (s Map[M]) Clear() int {
 	return n
 }
 
-func (s Map[M]) Add(m M) bool {
+func (s mapSet[M]) Add(m M) bool {
 	if s.Contains(m) {
 		return false
 	}
@@ -43,7 +44,7 @@ func (s Map[M]) Add(m M) bool {
 	return true
 }
 
-func (s Map[M]) Remove(m M) bool {
+func (s mapSet[M]) Remove(m M) bool {
 	if !s.Contains(m) {
 		return false
 	}
@@ -51,12 +52,15 @@ func (s Map[M]) Remove(m M) bool {
 	return true
 }
 
-func (s Map[M]) Cardinality() int {
+func (s mapSet[M]) Cardinality() int {
+	if s == nil {
+		return 0
+	}
 	return len(s)
 }
 
 // Iterator yields all elements in the set.
-func (s Map[M]) Iterator(yield func(M) bool) {
+func (s mapSet[M]) Iterator(yield func(M) bool) {
 	for k := range s {
 		if !yield(k) {
 			return
@@ -64,6 +68,15 @@ func (s Map[M]) Iterator(yield func(M) bool) {
 	}
 }
 
-func (s Map[M]) Clone() Set[M] {
+func (s mapSet[M]) Clone() Set[M] {
 	return NewFrom(s.Iterator)
+}
+
+func (s mapSet[M]) NewEmpty() Set[M] {
+	return New[M]()
+}
+
+func (s mapSet[M]) String() string {
+	var m M
+	return fmt.Sprintf("Set[%T](%v)", m, slices.Collect(maps.Keys(s)))
 }

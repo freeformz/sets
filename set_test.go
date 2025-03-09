@@ -329,74 +329,87 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 }
 
 func testSetConcurrency(t *testing.T, set Set[int]) {
-	var started, finished sync.WaitGroup
-	changes := make(chan int, 100)
+	started := make(chan struct{})
+	start := make(chan struct{})
+	var finished sync.WaitGroup
 
-	for i := range 20 {
-		started.Add(5)
-		finished.Add(5)
-		go func(base int) {
-			started.Done()
-			started.Wait()
+	goroutines := []func(int){
+		func(base int) {
+			started <- struct{}{}
+			<-start
 			for i := range (base + 1) * 100 {
 				set.Add(i)
 			}
 			finished.Done()
-		}(i)
-
-		go func(base int) {
-			started.Done()
-			started.Wait()
+		},
+		func(base int) {
 			var x int
+			started <- struct{}{}
+			<-start
 			for range (base + 1) * 100 {
 				x = set.Cardinality()
 			}
 			_ = x
 			finished.Done()
-		}(i)
-
-		go func(base int) {
-			started.Done()
-			started.Wait()
+		},
+		func(base int) {
 			var x bool
+			started <- struct{}{}
+			<-start
 			for i := range (base + 1) * 100 {
 				x = set.Contains(i)
 			}
 			_ = x
 			finished.Done()
-		}(i)
-
-		go func(base int) {
-			started.Done()
-			started.Wait()
+		},
+		func(base int) {
+			started <- struct{}{}
+			<-start
 			for i := range (base + 1) * 100 {
 				set.Remove(i)
 			}
 			finished.Done()
-		}(i)
-
-		go func(base int) {
+		},
+		func(base int) {
 			other := New[int]()
 			for i := range (base + 1) * 100 {
 				other.Add(i)
 			}
-			started.Done()
-			started.Wait()
+			started <- struct{}{}
+			<-start
 			AppendSeq(other, set.Iterator)
 			RemoveSeq(set, other.Iterator)
 			finished.Done()
-		}(i)
+		},
+		func(base int) {
+			var x int
+			started <- struct{}{}
+			<-start
+			for j := range base {
+				for i := range set.Iterator {
+					x += i + j
+				}
+			}
+			_ = x
+			finished.Done()
+		},
+	}
+	count := 20
+	for i := range count {
+		finished.Add(len(goroutines))
+		for j := range len(goroutines) {
+			go goroutines[j](i)
+		}
 	}
 
-	go func() {
-		for i := range changes {
-			set.Add(i)
-		}
-	}()
+	for range count * len(goroutines) {
+		<-started
+	}
+	close(start)
 
 	finished.Wait()
-	close(changes)
 }
+
 func TestLocked_Concurrency(t *testing.T) {
 	t.Parallel()
 	testSetConcurrency(t,
@@ -416,4 +429,112 @@ func TestSync_Concurrency(t *testing.T) {
 	testSetConcurrency(t,
 		NewSyncFrom(slices.Values([]int{9, 8, 7, 6, 5, 4, 3, 2, 1})),
 	)
+}
+
+func TestOrdered_Remove(t *testing.T) {
+	t.Parallel()
+	s := NewOrdered[int]()
+	for i := range 5 {
+		s.Add(i)
+	}
+	if s.Cardinality() != 5 {
+		t.Fatalf("expected 5 elements, got %d", s.Cardinality())
+	}
+	s.Remove(2)
+	if s.Cardinality() != 4 {
+		t.Fatalf("expected 9 elements, got %d", s.Cardinality())
+	}
+	values := slices.Collect(s.Iterator)
+
+	if values[0] != 0 {
+		t.Fatalf("expected 0, got %d", values[0])
+	}
+	if values[1] != 1 {
+		t.Fatalf("expected 1, got %d", values[1])
+	}
+	if values[2] != 3 {
+		t.Fatalf("expected 3, got %d", values[2])
+	}
+	if values[3] != 4 {
+		t.Fatalf("expected 4, got %d", values[3])
+	}
+}
+
+func TestEqualOrdered(t *testing.T) {
+	t.Parallel()
+	s := NewOrdered[int]()
+	for i := range 5 {
+		s.Add(i)
+	}
+	if !EqualOrdered(s, s.Clone().(OrderedSet[int])) {
+		t.Fatalf("expected s to be equal to itself")
+	}
+	s2 := NewOrdered[int]()
+	for i := 4; i >= 0; i-- {
+		s2.Add(i)
+	}
+	if EqualOrdered(s, s2) {
+		t.Fatalf("expected s to be different from s2")
+	}
+	if !Equal(s, s2) {
+		t.Fatalf("expected s to be equal to s2")
+	}
+}
+
+func TestChunk_Ordered(t *testing.T) {
+	t.Parallel()
+	s := NewOrdered[int]()
+	for i := range 21 {
+		s.Add(i)
+	}
+
+	var i int
+	for chunk := range Chunk(s, 5) {
+		switch i {
+		case 4: // deal with the odd chunk
+			if chunk.Cardinality() != 1 {
+				t.Fatalf("expected 1 elements, got %d", chunk.Cardinality())
+			}
+			if !Equal(chunk, NewOrderedFrom(slices.Values([]int{20}))) {
+				t.Fatalf("expected 20, got %v", Elements(chunk))
+			}
+		default:
+			if chunk.Cardinality() != 5 {
+				t.Fatalf("expected 5 elements, got %d", chunk.Cardinality())
+			}
+			values := slices.Collect(chunk.Iterator)
+			for j := range 5 {
+				if values[j] != i*5+j {
+					t.Fatalf("expected %d, got %d", i*5+j, values[j])
+				}
+			}
+		}
+		i++
+	}
+}
+
+func TestChunk(t *testing.T) {
+	t.Parallel()
+	s := New[int]()
+	for i := range 22 {
+		s.Add(i)
+	}
+
+	var i int
+	for chunk := range Chunk(s, 5) {
+		switch i {
+		case 4: // deal with the odd chunk
+			if chunk.Cardinality() != 2 {
+				t.Fatalf("expected 2 elements, got %d", chunk.Cardinality())
+			}
+		default:
+			if chunk.Cardinality() != 5 {
+				t.Fatalf("expected 5 elements, got %d", chunk.Cardinality())
+			}
+		}
+		if !Subset(chunk, s) {
+			t.Fatalf("expected %v to be a subset of %v", Elements(chunk), Elements(s))
+		}
+		i++
+	}
 }
