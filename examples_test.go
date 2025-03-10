@@ -432,3 +432,47 @@ func ExampleSorted() {
 	// 3
 	// 5
 }
+
+func ExampleChunk() {
+	ints := NewOrdered[int]()
+	AppendSeq(ints, slices.Values([]int{1, 2, 3, 4, 5}))
+
+	// this example test won't work with an unordered set
+	// as the order of the chunks is based on the order of
+	// the set elements, which isn't stable in an unordered set
+	chunks := Chunk(ints, 2)
+	for chunk := range chunks {
+		fmt.Println(chunk)
+		for v := range chunk.Iterator {
+			fmt.Println(v)
+		}
+	}
+	// Output:
+	// OrderedSet[int]([1 2])
+	// 1
+	// 2
+	// OrderedSet[int]([3 4])
+	// 3
+	// 4
+	// OrderedSet[int]([5])
+	// 5
+}
+
+func ExampleIter2() {
+	ints := NewOrdered[int]()
+	AppendSeq(ints, slices.Values([]int{1, 2, 3, 4, 5}))
+
+	// this example test won't work with an unordered set
+	// as the iter2 function relies on the order of the set
+	// elements, which isn't stable in an unordered set
+	for i, v := range Iter2(ints.Iterator) {
+		fmt.Println("idx:", i, "value:", v)
+	}
+
+	// Output:
+	// idx: 0 value: 1
+	// idx: 1 value: 2
+	// idx: 2 value: 3
+	// idx: 3 value: 4
+	// idx: 4 value: 5
+}
