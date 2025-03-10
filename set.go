@@ -169,12 +169,6 @@ func Disjoint[K comparable](a, b Set[K]) bool {
 // Iter2 is a helper function that simplifies iterating over a set when an "index" is needed, by providing a pseudo-index
 // to the yield function. The index is not stable across iterations. The yield function is called for each element in the
 // set. If the yield function returns false, the iteration is stopped.
-//
-// Example:
-//
-//	for i, k := range Iter2(s.Iterator) {
-//	    fmt.Println(i, k)
-//	}
 func Iter2[K comparable](iter iter.Seq[K]) func(func(i int, k K) bool) {
 	var i int
 	return func(yield func(i int, k K) bool) {
