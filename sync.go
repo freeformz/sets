@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"encoding/json"
 	"fmt"
 	"iter"
 	"slices"
@@ -87,4 +88,29 @@ func (s *syncMap[M]) NewEmpty() Set[M] {
 func (s *syncMap[M]) String() string {
 	var m M
 	return fmt.Sprintf("SyncSet[%T](%v)", m, slices.Collect(s.Iterator))
+}
+
+func (s *syncMap[M]) MarshalJSON() ([]byte, error) {
+	v := slices.Collect(s.Iterator)
+	if len(v) == 0 {
+		return []byte("[]"), nil
+	}
+
+	d, err := json.Marshal(v)
+	if err != nil {
+		return d, fmt.Errorf("marshaling sync set: %w", err)
+	}
+	return d, nil
+}
+
+func (s *syncMap[M]) UnmarshalJSON(d []byte) error {
+	var x []M
+	if err := json.Unmarshal(d, &x); err != nil {
+		return fmt.Errorf("unmarshaling sync set: %w", err)
+	}
+	s.m.Clear()
+	for _, m := range x {
+		s.Add(m)
+	}
+	return nil
 }

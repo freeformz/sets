@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 )
@@ -475,4 +476,23 @@ func ExampleIter2() {
 	// idx: 2 value: 3
 	// idx: 3 value: 4
 	// idx: 4 value: 5
+}
+
+func Example_json() {
+	set := NewOrderedFrom(slices.Values([]float32{1.0, 1.2, 1.3, 1.4, 1.5}))
+	b, err := json.Marshal(set)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(b))
+
+	set2 := NewOrdered[float32]()
+	if err := json.Unmarshal(b, &set2); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(set2)
+
+	// Output:
+	// [1,1.2,1.3,1.4,1.5]
+	// OrderedSet[float32]([1 1.2 1.3 1.4 1.5])
 }

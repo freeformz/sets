@@ -58,6 +58,16 @@ See the package level [examples](https://pkg.go.dev/github.com/freeformz/sets#pk
   ...
 ```
 
+## JSON
+
+Sets marshal to/from JSON as JSON arrays.
+They must be initialized before doing so as the zero value of an interface is nil.
+A JSON array with repeated values unmarshaled to a Set will not preserve duplicates.
+An empty Set marshals to `[]`.
+OrderedSets preserve order when {un,}marshaling, while Sets do not.
+
+Sets of types that don't have a JSON equivalent can't be marshaled to and/or from JSON w/o an error. For instance a Set of an interface type can marshal to json, but can't then un-marshal back to Go w/o an error.
+
 ## Set Helpers
 
 These helpers work on all Set types, including OrderedSets.
@@ -88,7 +98,10 @@ These helpers work on all OrderedSet types.
 * `sets.Reverse(aOrderedSet)` :  Returns a new OrderedSet with the elements in the reverse order of the original OrderedSet.
 * `sets.Sorted(aOrderedSet)` : Return a copy of aOrderedSet with the elements sorted in ascending order. Does not modify the original set.
 
+## Custom Set Types
+
+You can implement your own set types and as long as they conform to the interfaces use the package functions as they don't use any internal details.
+
 ## TODOs
 
 * Ordered rapid tests that test the OrderedSet bits like the normal Set bits are tested.
-* Implement JSON functions/methods
