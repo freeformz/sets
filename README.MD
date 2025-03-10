@@ -91,4 +91,4 @@ These helpers work on all OrderedSet types.
 ## TODOs
 
 * Ordered rapid tests that test the OrderedSet bits like the normal Set bits are tested.
-* More examples?
+* Implement JSON functions/methods
