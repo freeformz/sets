@@ -1,6 +1,7 @@
 package set
 
 import (
+	"encoding/json"
 	"maps"
 	"slices"
 	"sync"
@@ -110,6 +111,34 @@ func (sm *SetStateMachine) Contains(t *rapid.T) {
 }
 func (sm *SetStateMachine) Clone(t *rapid.T) {
 	sm.set = sm.set.Clone()
+}
+
+type Embed[M comparable] struct {
+	ASet Set[M]
+}
+
+func (sm *SetStateMachine) JSON(t *rapid.T) {
+	d, err := json.Marshal(sm.set)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &sm.set); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	v := Embed[int]{ASet: sm.set}
+	d, err = json.Marshal(v)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	v = Embed[int]{ASet: sm.set.NewEmpty()}
+	if err := json.Unmarshal(d, &v); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(sm.set, v.ASet) {
+		t.Fatalf("expected %v, got %v", Elements(sm.set), Elements(v.ASet))
+	}
 }
 
 func (sm *SetStateMachine) Intersection(t *rapid.T) {
@@ -307,6 +336,10 @@ func (sm *SetStateMachine) Clear(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Check(t *rapid.T) {
+	t.Logf("set: %#v\n", sm.set)
+	t.Logf("stateI: %#v\n", sm.stateI)
+	t.Logf("stateO: %#v\n", sm.stateO)
+
 	if len(sm.stateI) != sm.set.Cardinality() {
 		t.Fatalf("expected %d elements, got %d", len(sm.stateI), sm.set.Cardinality())
 	}
@@ -317,9 +350,6 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 	if diff := cmp.Diff(slices.Collect(maps.Keys(sm.stateI)), Elements(sm.set), sortInts()); diff != "" {
 		t.Fatalf("unexpected elements (-want +got):\n%s", diff)
 	}
-	t.Logf("set: %#v\n", sm.set)
-	t.Logf("stateI: %#v\n", sm.stateI)
-	t.Logf("stateO: %#v\n", sm.stateO)
 }
 
 func testSetConcurrency(t *testing.T, set Set[int]) {
@@ -530,5 +560,75 @@ func TestChunk(t *testing.T) {
 			t.Fatalf("expected %v to be a subset of %v", Elements(chunk), Elements(s))
 		}
 		i++
+	}
+}
+
+type Foo interface {
+	Foo()
+}
+
+type bar struct {
+	Bar string
+}
+
+func (b *bar) Foo() {}
+
+type foo struct {
+	Baz string
+}
+
+func (f *foo) Foo() {}
+
+func TestSet_json(t *testing.T) {
+	t.Parallel()
+	set := New[Foo]()
+	set.Add(&foo{})
+	set.Add(&bar{})
+	d, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	// can't unmarshal into a set of interfaces
+	if err := json.Unmarshal(d, &set); err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+
+	set2 := New[foo]()
+	set2.Add(foo{Baz: "bar"})
+	set2.Add(foo{Baz: "foo"})
+
+	d, err = json.Marshal(set2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &set2); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	set3 := New[*foo]()
+	set3.Add(&foo{Baz: "bar"})
+	set3.Add(&foo{Baz: "foo"})
+	d, err = json.Marshal(set3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &set3); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	set4 := New[chan foo]()
+	set4.Add(make(chan foo))
+	set4.Add(make(chan foo))
+	// see comparison rules for channels
+	if set.Cardinality() != 2 {
+		t.Fatalf("expected 2 elements, got %d", set.Cardinality())
+	}
+	_, err = json.Marshal(set4)
+	// can't marshal a set of channels
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
 	}
 }

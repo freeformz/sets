@@ -2,6 +2,8 @@ package set
 
 import (
 	"cmp"
+	"encoding/json"
+	"fmt"
 	"iter"
 	"sync"
 )
@@ -171,4 +173,39 @@ func (s *lockedOrdered[M]) String() string {
 	defer s.RUnlock()
 
 	return "Locked" + s.set.String()
+}
+
+func (s *lockedOrdered[M]) MarshalJSON() ([]byte, error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	jm, ok := s.set.(json.Marshaler)
+	if !ok {
+		return nil, fmt.Errorf("cannot marshal set of type %T - not json.Marshaler", s.set)
+	}
+
+	d, err := jm.MarshalJSON()
+	if err != nil {
+		return d, fmt.Errorf("marshaling locked set: %w", err)
+	}
+
+	return d, nil
+}
+
+func (s *lockedOrdered[M]) UnmarshalJSON(d []byte) error {
+	s.L.Lock()
+	if s.iterating {
+		s.Wait()
+	}
+	defer s.L.Unlock()
+
+	um, ok := s.set.(json.Unmarshaler)
+	if !ok {
+		return fmt.Errorf("cannot unmarshal set of type %T - not json.Unmarshaler", s.set)
+	}
+
+	if err := um.UnmarshalJSON(d); err != nil {
+		return fmt.Errorf("unmarshaling locked set: %w", err)
+	}
+	return nil
 }

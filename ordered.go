@@ -2,6 +2,7 @@ package set
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"slices"
@@ -136,4 +137,29 @@ func (s *ordered[M]) Index(m M) int {
 func (s *ordered[M]) String() string {
 	var m M
 	return fmt.Sprintf("OrderedSet[%T](%v)", m, s.values)
+}
+
+func (s *ordered[M]) MarshalJSON() ([]byte, error) {
+	if len(s.values) == 0 {
+		return []byte("[]"), nil
+	}
+
+	d, err := json.Marshal(s.values)
+	if err != nil {
+		return d, fmt.Errorf("marshaling ordered set: %w", err)
+	}
+	return d, nil
+}
+
+func (s *ordered[M]) UnmarshalJSON(d []byte) error {
+	s.Clear()
+	if err := json.Unmarshal(d, &s.values); err != nil {
+		return fmt.Errorf("unmarshaling ordered set: %w", err)
+	}
+
+	for i, v := range s.values {
+		s.idx[v] = i
+	}
+
+	return nil
 }
