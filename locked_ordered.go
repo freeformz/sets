@@ -7,10 +7,10 @@ import (
 )
 
 type lockedOrdered[M cmp.Ordered] struct {
+	set OrderedSet[M]
 	*sync.RWMutex
 	*sync.Cond
 	iterating bool
-	set       OrderedSet[M]
 }
 
 var _ Set[int] = new(lockedOrdered[int])

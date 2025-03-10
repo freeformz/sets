@@ -6,10 +6,10 @@ import (
 )
 
 type lockedMap[M comparable] struct {
+	set Set[M]
 	*sync.RWMutex
 	*sync.Cond
 	iterating bool
-	set       Set[M]
 }
 
 var _ Set[int] = new(lockedMap[int])
