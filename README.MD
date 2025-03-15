@@ -1,8 +1,8 @@
 # Sets
 
-![ci status](https://github.com/freeformz/sets/actions/workflows/ci.yaml/badge.svg?branch=main)
-[![Go Report Card](https://goreportcard.com/badge/github.com/freeformz/sets)](https://goreportcard.com/report/github.com/freeformz/sets)
-[![GoDoc](https://godoc.org/github.com/freeformz/sets?status.svg)](http://godoc.org/github.com/freeformz/sets)
+![ci status](https://github.com/freeformz/setss/actions/workflows/ci.yaml/badge.svg?branch=main)
+[![Go Report Card](https://goreportcard.com/badge/github.com/freeformz/setss)](https://goreportcard.com/report/github.com/freeformz/setss)
+[![GoDoc](https://godoc.org/github.com/freeformz/setss?status.svg)](http://godoc.org/github.com/freeformz/setss)
 
 A generics based go set package that supports modern go features like iterators.
 
@@ -13,7 +13,7 @@ NOTE: This is currently a WIP. I don't expect to make any breaking API changes a
 Use go get to install this package.
 
 ```console
-go get github.com/freeformz/sets
+go get github.com/freeformz/setss
 ```
 
 ## Features

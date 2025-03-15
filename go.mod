@@ -1,4 +1,4 @@
-module github.com/freeformz/sets
+module github.com/freeformz/setss
 
 go 1.23
 
