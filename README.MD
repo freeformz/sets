@@ -6,7 +6,7 @@
 
 A generics based go set package that supports modern go features like iterators.
 
-NOTE: This is currently a WIP. I don't expect to make any breaking API changes atm, but I not able to rule it out yet.
+NOTE: This is currently a WIP. I don't expect to make any breaking API changes atm, but am not able to rule it out yet.
 
 ## Install
 
