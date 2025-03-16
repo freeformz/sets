@@ -34,29 +34,11 @@ go get github.com/freeformz/sets
 
 ## Usage
 
-See the package level [examples](https://pkg.go.dev/github.com/freeformz/sets#pkg-examples) for a more exhaustive set of examples.
+[Package Level Examples](https://pkg.go.dev/github.com/freeformz/sets#pkg-examples)
 
-```go
-  a := New[string]()
-  a.Add("hi")
-  a.Add("there")
+[Set Example](https://pkg.go.dev/github.com/freeformz/sets#example-Set)
 
-  a.Cardinality() // 2
-  a.Contains("bob") // false
-  a.Contains("hi") // true
-
-  a.Remove("bob") // false
-  a.Remove("hi") // true
-
-  b := New[string]()
-  b.Add("there")
-
-  set.Equal(a,b) // false
-  b.Add("hi")
-  set.Equal(a,b) // true
-
-  ...
-```
+[OrderedSet Example](https://pkg.go.dev/github.com/freeformz/sets#example-OrderedSet)
 
 ## JSON
 

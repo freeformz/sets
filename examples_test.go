@@ -6,58 +6,78 @@ import (
 	"slices"
 )
 
-func ExampleSet_Iterator() {
-	ints := New[int]()
-	ints.Add(5)
-	ints.Add(3)
-	ints.Add(2)
-	ints.Add(4)
-	ints.Add(1)
-
-	for i := range ints.Iterator {
-		fmt.Println(i)
-	}
-
-	// Unsorted output:
-	// 1
-	// 2
-	// 3
-	// 4
-	// 5
-}
-
 func ExampleSet() {
 	ints := New[int]()
 	ints.Add(5)
 	ints.Add(1)
 
-	if ints.Add(1) { // 1 is already present, returns false
-		fmt.Println("1 was added again?")
+	if !ints.Add(1) { // 1 is already present, returns false
+		fmt.Println("1 was not added again")
 	}
 
 	if ints.Add(33) { // 33 is not present, returns true
-		fmt.Println("33 was not added?")
+		fmt.Println("33 was added")
 	}
 
-	if ints.Cardinality() != 3 {
-		fmt.Println("Cardinality is wrong")
+	if ints.Cardinality() == 3 {
+		fmt.Println("ints has 3 elements")
+	}
+	other := ints.Clone()
+	if other.Cardinality() == 3 {
+		fmt.Println("Cloned set has 3 elements")
 	}
 
-	if !ints.Contains(5) {
-		fmt.Println("5 is missing")
+	if ints.Contains(5) {
+		fmt.Println("5 is present")
 	}
 
-	if ints.Contains(2) { // 2 is not present
-		fmt.Println("2 is present?")
+	if !ints.Contains(2) {
+		fmt.Println("2 is not present")
 	}
 
-	if ints.Remove(2) { // 2 is not present, returns false
-		fmt.Println("2 was removed?")
+	if !ints.Remove(2) { // 2 is not present, returns false
+		fmt.Println("2 was not removed")
 	}
 
-	if !ints.Remove(5) { // 5 is present, returns true
-		fmt.Println("5 was not removed?")
+	if ints.Remove(5) { // 5 is present, returns true
+		fmt.Println("5 was removed")
 	}
+
+	if x := ints.Clear(); x == 2 {
+		fmt.Println("Clear removed all elements")
+	}
+
+	// Sets aren't ordered, so collect into a slice and sort
+	// using iterator
+	items := slices.Collect(other.Iterator)
+	slices.Sort(items)
+	for _, i := range items {
+		fmt.Println(i)
+	}
+
+	other = ints.NewEmpty()
+	if other.Cardinality() == 0 {
+		fmt.Println("other is empty")
+	}
+
+	other.Add(0)
+	fmt.Println(other.String())
+
+	// Output:
+	// 1 was not added again
+	// 33 was added
+	// ints has 3 elements
+	// Cloned set has 3 elements
+	// 5 is present
+	// 2 is not present
+	// 2 was not removed
+	// 5 was removed
+	// Clear removed all elements
+	// 1
+	// 5
+	// 33
+	// other is empty
+	// Set[int]([0])
 }
 
 func ExampleOrdered() {
@@ -70,20 +90,54 @@ func ExampleOrdered() {
 	// adds 6 as it's the only new element
 	AppendSeq(ints, slices.Values([]int{5, 6, 1}))
 
-	out := make([]int, 0, ints.Cardinality())
-	for i := range ints.Iterator {
-		out = append(out, i)
+	// 0,5 1,3 2,2 3,4 4,1 5,6
+	for idx, i := range ints.Ordered {
+		fmt.Println(idx, i)
 	}
 
-	for _, i := range out {
+	// 5,6 4,1 3,4 2,2 1,3 0,5
+	for idx, i := range ints.Backwards {
+		fmt.Println(idx, i)
+	}
+
+	if v, ok := ints.At(1); v == 3 && ok {
+		fmt.Println("3 is at position 1")
+	}
+
+	if ints.Index(3) == 1 {
+		fmt.Println("3 is at index 1")
+	}
+
+	if ints.Index(100) == -1 {
+		fmt.Println("100 is not present")
+	}
+
+	ints.Sort()
+	// 1 2 3 4 5 6
+	for i := range ints.Iterator {
 		fmt.Println(i)
 	}
 	// Output:
-	// 5
-	// 3
-	// 2
-	// 4
+	// 0 5
+	// 1 3
+	// 2 2
+	// 3 4
+	// 4 1
+	// 5 6
+	// 5 6
+	// 4 1
+	// 3 4
+	// 2 2
+	// 1 3
+	// 0 5
+	// 3 is at position 1
+	// 3 is at index 1
+	// 100 is not present
 	// 1
+	// 2
+	// 3
+	// 4
+	// 5
 	// 6
 }
 
@@ -405,17 +459,6 @@ func ExampleReverse() {
 	// 5
 	// 3
 	// 2
-}
-
-func ExampleSet_String() {
-	// using an ordered set for consistent output
-	ints := NewOrdered[int]()
-	ints.Add(5)
-	ints.Add(3)
-	ints.Add(2)
-
-	fmt.Println(ints)
-	// Output: OrderedSet[int]([5 3 2])
 }
 
 func ExampleSorted() {
