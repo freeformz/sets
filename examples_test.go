@@ -80,7 +80,7 @@ func ExampleSet() {
 	// Set[int]([0])
 }
 
-func ExampleOrdered() {
+func ExampleOrderedSet() {
 	ints := NewOrdered[int]()
 	ints.Add(5)
 	ints.Add(3)
