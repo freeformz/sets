@@ -32,6 +32,12 @@ func NewSyncFrom[M comparable](seq iter.Seq[M]) Set[M] {
 	return s
 }
 
+// NewSyncWith returns a new Set[M] filled with the values provided and is backed by a sync.Mao, making it safe
+// for concurrent use. Please read the documentation for [sync.Map] to understand the behavior of modifying the map.
+func NewSyncWith[M comparable](m ...M) Set[M] {
+	return NewSyncFrom(slices.Values(m))
+}
+
 func (s *syncMap[M]) Contains(m M) bool {
 	_, ok := s.m.Load(m)
 	return ok

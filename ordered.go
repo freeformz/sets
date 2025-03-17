@@ -30,6 +30,11 @@ func NewOrderedFrom[M cmp.Ordered](seq iter.Seq[M]) OrderedSet[M] {
 	return s
 }
 
+// NewOrderedWith the values provides. Duplicates are removed.
+func NewOrderedWith[M cmp.Ordered](m ...M) OrderedSet[M] {
+	return NewOrderedFrom(slices.Values(m))
+}
+
 func (s *ordered[M]) Contains(m M) bool {
 	_, ok := s.idx[m]
 	return ok

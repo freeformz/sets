@@ -539,3 +539,214 @@ func Example_json() {
 	// [1,1.2,1.3,1.4,1.5]
 	// OrderedSet[float32]([1 1.2 1.3 1.4 1.5])
 }
+
+func ExampleNewWith() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewWith(m...)
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewLockedWith() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewLockedWith(m...)
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewOrderedWith() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewOrderedWith(m...)
+	fmt.Println(set.Cardinality())
+
+	for i := range set.Iterator {
+		fmt.Println(i)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewLockedOrderedWith() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewLockedOrderedWith(m...)
+	fmt.Println(set.Cardinality())
+
+	for i := range set.Iterator {
+		fmt.Println(i)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewSyncWith() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewSyncWith(m...)
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNew() {
+	set := New[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewLocked() {
+	set := NewLocked[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewOrdered() {
+	set := NewOrdered[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+	fmt.Println(set.Cardinality())
+
+	for i := range set.Iterator {
+		fmt.Println(i)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewLockedOrdered() {
+	set := NewLockedOrdered[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+	fmt.Println(set.Cardinality())
+
+	for i := range set.Iterator {
+		fmt.Println(i)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewSync() {
+	set := NewSync[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewFrom() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewFrom(slices.Values(m))
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewLockedFrom() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewLockedFrom(slices.Values(m))
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewOrderedFrom() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewOrderedFrom(slices.Values(m))
+	fmt.Println(set.Cardinality())
+
+	for i := range set.Iterator {
+		fmt.Println(i)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewLockedOrderedFrom() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewLockedOrderedFrom(slices.Values(m))
+	fmt.Println(set.Cardinality())
+
+	for i := range set.Iterator {
+		fmt.Println(i)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewSyncFrom() {
+	m := []string{"a", "b", "c", "b"}
+	set := NewSyncFrom(slices.Values(m))
+	fmt.Println(set.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewLockedWrapping() {
+	set := New[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+
+	wrapped := NewLockedWrapping(set)
+	// wrapped is safe for concurrent use
+	fmt.Println(wrapped.Cardinality())
+
+	// Output: 3
+}
+
+func ExampleNewLockedOrderedWrapping() {
+	set := NewOrdered[string]()
+	set.Add("a")
+	set.Add("b")
+	set.Add("c")
+	set.Add("b")
+
+	wrapped := NewLockedOrderedWrapping(set)
+	// wrapped is safe for concurrent use
+	fmt.Println(wrapped.Cardinality())
+
+	// Output: 3
+}

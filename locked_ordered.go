@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"iter"
+	"slices"
 	"sync"
 )
 
@@ -37,9 +38,14 @@ func NewLockedOrderedFrom[M cmp.Ordered](seq iter.Seq[M]) OrderedSet[M] {
 	return s
 }
 
-// NewLockedOrderedWith returns an OrderedSet[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
+// NewOrderedWith the values provides. Duplicates are removed.
+func NewLockedOrderedWith[M cmp.Ordered](m ...M) OrderedSet[M] {
+	return NewLockedOrderedFrom(slices.Values(m))
+}
+
+// NewLockedOrderedWrapping returns an OrderedSet[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
-func NewLockedOrderedWith[M cmp.Ordered](set OrderedSet[M]) OrderedSet[M] {
+func NewLockedOrderedWrapping[M cmp.Ordered](set OrderedSet[M]) OrderedSet[M] {
 	if _, lok := set.(locker); lok {
 		return set
 	}
