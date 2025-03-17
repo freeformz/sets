@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"iter"
+	"slices"
 	"sync"
 )
 
@@ -35,6 +36,11 @@ func NewLockedFrom[M comparable](seq iter.Seq[M]) Set[M] {
 	return s
 }
 
+// NewLockedWith the values provides. Duplicates are removed.
+func NewLockedWith[M comparable](m ...M) Set[M] {
+	return NewLockedFrom(slices.Values(m))
+}
+
 type locker interface {
 	Lock()
 	Unlock()
@@ -44,9 +50,9 @@ type locker interface {
 	Broadcast()
 }
 
-// NewLockedWith returns a Set[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
+// NewLockedWrapping returns a Set[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
-func NewLockedWith[M comparable](set Set[M]) Set[M] {
+func NewLockedWrapping[M comparable](set Set[M]) Set[M] {
 	if _, lok := set.(locker); lok {
 		return set
 	}

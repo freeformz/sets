@@ -28,6 +28,11 @@ func NewFrom[M comparable](seq iter.Seq[M]) Set[M] {
 	return s
 }
 
+// NewWith the values provides. Duplicates are removed.
+func NewWith[M comparable](m ...M) Set[M] {
+	return NewFrom(slices.Values(m))
+}
+
 func (s *mapSet[M]) Contains(m M) bool {
 	_, ok := s.set[m]
 	return ok
