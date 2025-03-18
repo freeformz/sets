@@ -34,11 +34,14 @@ type Set[M comparable] interface {
 	// based on the implementation in use. Implementations must document their iteration safety.
 	Iterator(yield func(M) bool)
 
-	// Remove an element from the set. Returns true if the element was in the set.
-	Remove(M) bool
-
 	// NewEmpty returns a new empty set of the same underlying type. If the type is ordered, the new set will also be ordered.
 	NewEmpty() Set[M]
+
+	// Pop returns and removes a random element from the set. The second return value is false if nothing was removed.
+	Pop() (M, bool)
+
+	// Remove an element from the set. Returns true if the element was in the set.
+	Remove(M) bool
 
 	// String representation of the set.
 	String() string

@@ -58,6 +58,21 @@ func (s *syncMap[M]) Add(m M) bool {
 	return !loaded
 }
 
+func (s *syncMap[M]) Pop() (M, bool) {
+	var m M
+	var ok bool
+
+	s.m.Range(func(key, _ interface{}) bool {
+		if _, ok = s.m.LoadAndDelete(key); ok {
+			m = key.(M)
+			ok = true
+			return false
+		}
+		return true
+	})
+	return m, ok
+}
+
 func (s *syncMap[M]) Remove(m M) bool {
 	_, ok := s.m.LoadAndDelete(m)
 	return ok

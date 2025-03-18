@@ -131,6 +131,16 @@ func (s *lockedMap[M]) NewEmpty() Set[M] {
 	return NewLocked[M]()
 }
 
+func (s *lockedMap[M]) Pop() (M, bool) {
+	s.L.Lock()
+	if s.iterating {
+		s.Wait()
+	}
+	defer s.L.Unlock()
+
+	return s.set.Pop()
+}
+
 func (s *lockedMap[M]) String() string {
 	s.RLock()
 	defer s.RUnlock()

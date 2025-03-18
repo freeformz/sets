@@ -70,6 +70,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Max(aSet)` : Returns the max element in the set as determined by the max builtin.
 * `sets.Min(aSet)` : Returns the min element in the set as determined by the min builtin.
 * `sets.Chunk(aSet,n)` : Chunks the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
+* `sets.IsEmpty(aSet)` : Returns true if the set is empty, otherwise false.
 
 ## OrderedSet Helpers
 
@@ -82,7 +83,8 @@ These helpers work on all OrderedSet types.
 
 ## Custom Set Types
 
-You can implement your own set types and as long as they conform to the interfaces use the package functions as they don't use any internal details.
+You can implement your own set types as long as they conform to the interfaces and can use the package level functions
+as they do not rely on any internal implementation details.
 
 ## TODOs
 

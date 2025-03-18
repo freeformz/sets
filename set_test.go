@@ -117,6 +117,21 @@ type Embed[M comparable] struct {
 	ASet Set[M]
 }
 
+func (sm *SetStateMachine) Pop(t *rapid.T) {
+	c := sm.set.Clone()
+	i, ok := sm.set.Pop()
+	t.Logf("Pop: %d, %v", i, ok)
+	if ok != !IsEmpty(c) {
+		t.Fatalf("expected Pop() to not be %v, got %v", !IsEmpty(c), ok)
+	}
+	if ok {
+		if !c.Contains(i) {
+			t.Fatalf("expected %v to exist in copy", i)
+		}
+		sm.remove(t, i)
+	}
+}
+
 func (sm *SetStateMachine) JSON(t *rapid.T) {
 	d, err := json.Marshal(sm.set)
 	if err != nil {

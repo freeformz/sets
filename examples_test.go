@@ -10,6 +10,7 @@ func ExampleSet() {
 	ints := New[int]()
 	ints.Add(5)
 	ints.Add(1)
+	ints.Add(9)
 
 	if !ints.Add(1) { // 1 is already present, returns false
 		fmt.Println("1 was not added again")
@@ -43,8 +44,13 @@ func ExampleSet() {
 		fmt.Println("5 was removed")
 	}
 
+	if _, ok := ints.Pop(); ok { // 1 || 33 || 9 removed
+		// not printing since random
+		fmt.Println("Popped a number")
+	}
+
 	if x := ints.Clear(); x == 2 {
-		fmt.Println("Clear removed all elements")
+		fmt.Println("Clear removed all remaining elements")
 	}
 
 	// Sets aren't ordered, so collect into a slice and sort
@@ -66,15 +72,15 @@ func ExampleSet() {
 	// Output:
 	// 1 was not added again
 	// 33 was added
-	// ints has 3 elements
-	// Cloned set has 3 elements
 	// 5 is present
 	// 2 is not present
 	// 2 was not removed
 	// 5 was removed
-	// Clear removed all elements
+	// Popped a number
+	// Clear removed all remaining elements
 	// 1
 	// 5
+	// 9
 	// 33
 	// other is empty
 	// Set[int]([0])
