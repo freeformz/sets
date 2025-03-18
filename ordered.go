@@ -116,6 +116,15 @@ func (s *ordered[M]) NewEmpty() Set[M] {
 	return NewOrdered[M]()
 }
 
+func (s *ordered[M]) Pop() (M, bool) {
+	for k := range s.idx {
+		s.Remove(k)
+		return k, true
+	}
+	var m M
+	return m, false
+}
+
 func (s *ordered[M]) Sort() {
 	slices.Sort(s.values)
 	for i, v := range s.values {

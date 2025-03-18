@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.7.0
+
+* Added `set.Pop() (M, bool)`, which returns and removes a random element from the set.
+  The second return value is false if nothing was removed.
+
 ## v0.6.1
 
 * Added `sets.IsEmpty(set)` which is a convenience wrapper for `set.Cardinality() == 0`

@@ -83,6 +83,15 @@ func (s *mapSet[M]) NewEmpty() Set[M] {
 	return New[M]()
 }
 
+func (s *mapSet[M]) Pop() (M, bool) {
+	for k := range s.set {
+		delete(s.set, k)
+		return k, true
+	}
+	var m M
+	return m, false
+}
+
 func (s *mapSet[M]) String() string {
 	var m M
 	return fmt.Sprintf("Set[%T](%v)", m, slices.Collect(maps.Keys(s.set)))
