@@ -237,3 +237,8 @@ func Chunk[K comparable](s Set[K], n int) iter.Seq[Set[K]] {
 		}
 	}
 }
+
+// IsEmpty returns true if the set is empty.
+func IsEmpty[K comparable](s Set[K]) bool {
+	return s.Cardinality() == 0
+}

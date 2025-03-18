@@ -750,3 +750,18 @@ func ExampleNewLockedOrderedWrapping() {
 
 	// Output: 3
 }
+
+func ExampleIsEmpty() {
+	set := New[int]()
+	if IsEmpty(set) {
+		fmt.Println("set is empty")
+	}
+
+	set.Add(5)
+	if !IsEmpty(set) {
+		fmt.Println("set is not empty")
+	}
+	// Output:
+	// set is empty
+	// set is not empty
+}
