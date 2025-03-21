@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## v0.8.0
+
+* Additional helpers:
+  * Map - maps the items in the set and returns them as a new set
+  * MapTo - maps the items in the set into a provided set
+  * MapToSlice - maps the items in the set and returns them as a slice
+  * Filter - filters the items in the set based on the function and returns a new set
+  * Reduce - reduces the items in the set to a single value
+  * ReduceRight - reduces the items in the ordered set, in backwards order, to a single value
+  * ForEach - calls the provided function with each member of the set
+  * ForEachRight - calls the provided function for each item in the ordered set, in backwards order.
+* Cleaned up some Examples so they now use New{Ordered,}With instead of New{Ordered,} and multiple Adds
+
+## v0.7.1
+
+* cmp.Diff examples
+
 ## v0.7.0
 
 * Added `set.Pop() (M, bool)`, which returns and removes a random element from the set.

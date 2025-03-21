@@ -150,10 +150,7 @@ func ExampleOrderedSet() {
 }
 
 func ExampleElements() {
-	ints := New[int]()
-	ints.Add(5)
-	ints.Add(3)
-	ints.Add(2)
+	ints := NewWith(5, 3, 2)
 
 	// []T is returned
 	elements := Elements(ints)
@@ -167,9 +164,8 @@ func ExampleElements() {
 }
 
 func ExampleAppendSeq() {
-	ints := New[int]()
-	ints.Add(5)
-	ints.Add(3)
+	ints := NewWith(5, 3)
+
 	// adds 2,4,1 to the set since 5 and 3 already exist
 	added := AppendSeq(ints, slices.Values([]int{5, 3, 2, 4, 1}))
 	fmt.Println(added)
@@ -177,10 +173,8 @@ func ExampleAppendSeq() {
 }
 
 func ExampleRemoveSeq() {
-	ints := New[int]()
-	ints.Add(5)
-	ints.Add(3)
-	ints.Add(2)
+	ints := NewWith(5, 3, 2)
+
 	// removes 2 from the set since 5 and 3 exist
 	removed := RemoveSeq(ints, slices.Values([]int{2, 4, 1}))
 	fmt.Println(removed)
@@ -188,13 +182,8 @@ func ExampleRemoveSeq() {
 }
 
 func ExampleUnion() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(3)
-	b.Add(2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := Union(a, b)
 	out := make([]int, 0, c.Cardinality())
@@ -212,13 +201,8 @@ func ExampleUnion() {
 }
 
 func ExampleIntersection() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(3)
-	b.Add(2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := Intersection(a, b)
 	out := make([]int, 0, c.Cardinality())
@@ -233,13 +217,8 @@ func ExampleIntersection() {
 }
 
 func ExampleDifference() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(3)
-	b.Add(2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := Difference(a, b)
 	out := make([]int, 0, c.Cardinality())
@@ -254,13 +233,8 @@ func ExampleDifference() {
 }
 
 func ExampleSymmetricDifference() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(3)
-	b.Add(2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := SymmetricDifference(a, b)
 	for i := range c.Iterator {
@@ -272,14 +246,8 @@ func ExampleSymmetricDifference() {
 }
 
 func ExampleSubset() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(5)
-	b.Add(3)
-	b.Add(2)
+	a := NewWith(5, 3)
+	b := NewWith(5, 3, 2)
 
 	if Subset(a, b) {
 		fmt.Println("a is a subset of b")
@@ -294,14 +262,8 @@ func ExampleSubset() {
 }
 
 func ExampleSuperset() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(5)
-	b.Add(3)
-	b.Add(2)
+	a := NewWith(5, 3)
+	b := NewWith(5, 3, 2)
 
 	if !Superset(a, b) {
 		fmt.Println("a is not a superset of b")
@@ -316,13 +278,8 @@ func ExampleSuperset() {
 }
 
 func ExampleEqual() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(5)
-	b.Add(3)
+	a := NewWith(5, 3)
+	b := NewWith(5, 3)
 
 	if Equal(a, b) {
 		fmt.Println("a and b are equal")
@@ -369,13 +326,8 @@ func ExampleContainsSeq() {
 }
 
 func ExampleDisjoint() {
-	a := New[int]()
-	a.Add(5)
-	a.Add(3)
-
-	b := New[int]()
-	b.Add(2)
-	b.Add(4)
+	a := NewWith(5, 3)
+	b := NewWith(2, 4)
 
 	if Disjoint(a, b) {
 		fmt.Println("a and b are disjoint")
@@ -391,15 +343,8 @@ func ExampleDisjoint() {
 }
 
 func ExampleEqualOrdered() {
-	a := NewOrdered[int]()
-	a.Add(5)
-	a.Add(3)
-	a.Add(1)
-
-	b := NewOrdered[int]()
-	b.Add(5)
-	b.Add(3)
-	b.Add(1)
+	a := NewOrderedWith(5, 3, 1)
+	b := NewOrderedWith(5, 3, 1)
 
 	if EqualOrdered(a, b) {
 		fmt.Println("a and b are equal")
@@ -423,10 +368,7 @@ func ExampleEqualOrdered() {
 }
 
 func ExampleMin() {
-	ints := New[int]()
-	ints.Add(3)
-	ints.Add(2)
-	ints.Add(5)
+	ints := NewWith(3, 2, 5)
 
 	min := Min(ints)
 	fmt.Println(min)
@@ -434,10 +376,7 @@ func ExampleMin() {
 }
 
 func ExampleMax() {
-	ints := New[int]()
-	ints.Add(3)
-	ints.Add(5)
-	ints.Add(2)
+	ints := NewWith(3, 5, 2)
 
 	max := Max(ints)
 	fmt.Println(max)
@@ -445,10 +384,7 @@ func ExampleMax() {
 }
 
 func ExampleIsSorted() {
-	ints := NewOrdered[int]()
-	ints.Add(2)
-	ints.Add(3)
-	ints.Add(5)
+	ints := NewOrderedWith(2, 3, 5)
 
 	if IsSorted(ints) {
 		fmt.Println("ints is sorted")
@@ -470,10 +406,7 @@ func ExampleIsSorted() {
 }
 
 func ExampleReverse() {
-	ints := NewOrdered[int]()
-	ints.Add(2)
-	ints.Add(3)
-	ints.Add(5)
+	ints := NewOrderedWith(2, 3, 5)
 
 	reversed := Reverse(ints)
 	for i := range reversed.Iterator {
@@ -486,10 +419,7 @@ func ExampleReverse() {
 }
 
 func ExampleSorted() {
-	ints := NewOrdered[int]()
-	ints.Add(2)
-	ints.Add(5)
-	ints.Add(3)
+	ints := NewOrderedWith(2, 5, 3)
 
 	sorted := Sorted(ints)
 	for i := range sorted.Iterator {
@@ -502,8 +432,7 @@ func ExampleSorted() {
 }
 
 func ExampleChunk() {
-	ints := NewOrdered[int]()
-	AppendSeq(ints, slices.Values([]int{1, 2, 3, 4, 5}))
+	ints := NewOrderedWith(1, 2, 3, 4, 5)
 
 	// this example test won't work with an unordered set
 	// as the order of the chunks is based on the order of
@@ -527,8 +456,7 @@ func ExampleChunk() {
 }
 
 func ExampleIter2() {
-	ints := NewOrdered[int]()
-	AppendSeq(ints, slices.Values([]int{1, 2, 3, 4, 5}))
+	ints := NewOrderedWith(1, 2, 3, 4, 5)
 
 	// this example test won't work with an unordered set
 	// as the iter2 function relies on the order of the set
@@ -546,7 +474,7 @@ func ExampleIter2() {
 }
 
 func Example_json() {
-	set := NewOrderedFrom(slices.Values([]float32{1.0, 1.2, 1.3, 1.4, 1.5}))
+	set := NewOrderedWith(1.0, 1.2, 1.3, 1.4, 1.5)
 	b, err := json.Marshal(set)
 	if err != nil {
 		fmt.Println(err)
@@ -565,24 +493,21 @@ func Example_json() {
 }
 
 func ExampleNewWith() {
-	m := []string{"a", "b", "c", "b"}
-	set := NewWith(m...)
+	set := NewWith("a", "b", "c", "b")
 	fmt.Println(set.Cardinality())
 
 	// Output: 3
 }
 
 func ExampleNewLockedWith() {
-	m := []string{"a", "b", "c", "b"}
-	set := NewLockedWith(m...)
+	set := NewLockedWith("a", "b", "c", "b")
 	fmt.Println(set.Cardinality())
 
 	// Output: 3
 }
 
 func ExampleNewOrderedWith() {
-	m := []string{"a", "b", "c", "b"}
-	set := NewOrderedWith(m...)
+	set := NewOrderedWith("a", "b", "c", "b")
 	fmt.Println(set.Cardinality())
 
 	for i := range set.Iterator {
@@ -597,8 +522,7 @@ func ExampleNewOrderedWith() {
 }
 
 func ExampleNewLockedOrderedWith() {
-	m := []string{"a", "b", "c", "b"}
-	set := NewLockedOrderedWith(m...)
+	set := NewLockedOrderedWith("a", "b", "c", "b")
 	fmt.Println(set.Cardinality())
 
 	for i := range set.Iterator {
@@ -613,8 +537,7 @@ func ExampleNewLockedOrderedWith() {
 }
 
 func ExampleNewSyncWith() {
-	m := []string{"a", "b", "c", "b"}
-	set := NewSyncWith(m...)
+	set := NewSyncWith("a", "b", "c", "b")
 	fmt.Println(set.Cardinality())
 
 	// Output: 3
@@ -748,11 +671,7 @@ func ExampleNewSyncFrom() {
 }
 
 func ExampleNewLockedWrapping() {
-	set := New[string]()
-	set.Add("a")
-	set.Add("b")
-	set.Add("c")
-	set.Add("b")
+	set := NewWith("a", "b", "c", "b")
 
 	wrapped := NewLockedWrapping(set)
 	// wrapped is safe for concurrent use
@@ -762,11 +681,7 @@ func ExampleNewLockedWrapping() {
 }
 
 func ExampleNewLockedOrderedWrapping() {
-	set := NewOrdered[string]()
-	set.Add("a")
-	set.Add("b")
-	set.Add("c")
-	set.Add("b")
+	set := NewOrderedWith("a", "b", "c", "b")
 
 	wrapped := NewLockedOrderedWrapping(set)
 	// wrapped is safe for concurrent use
@@ -788,4 +703,123 @@ func ExampleIsEmpty() {
 	// Output:
 	// set is empty
 	// set is not empty
+}
+
+func ExampleMap() {
+	set := NewWith(1, 2, 3)
+
+	mapped := Map(set, func(i int) int {
+		return i * 2
+	})
+	for i := range mapped.Iterator {
+		fmt.Println(i)
+	}
+
+	mapped2 := Map(set, func(i int) string {
+		return fmt.Sprintf("%d", i)
+	})
+	for i := range mapped2.Iterator {
+		fmt.Println(i)
+	}
+	// Unordered output:
+	// 2
+	// 4
+	// 6
+	// 1
+	// 2
+	// 3
+}
+
+func ExampleMapTo() {
+	set := NewOrderedWith(3, 1, 2)
+
+	dest := New[string]()
+	MapTo(set, dest, func(i int) string {
+		return fmt.Sprintf("%d=%d*2", i*2, i)
+	})
+	for i := range dest.Iterator {
+		fmt.Println(i)
+	}
+	// Unordered output:
+	// 6=3*2
+	// 2=1*2
+	// 4=2*2
+}
+
+func ExampleMapToSlice() {
+	set := NewWith(3, 1, 2)
+
+	mapped := MapToSlice(set, func(i int) string {
+		return fmt.Sprintf("%d=%d*2", i*2, i)
+	})
+	for _, i := range mapped {
+		fmt.Println(i)
+	}
+	// Unordered output:
+	// 6=3*2
+	// 2=1*2
+	// 4=2*2
+}
+
+func ExampleFilter() {
+	set := NewWith(3, 0, 1, 2, 4)
+
+	filtered := Filter(set, func(i int) bool {
+		return i > 2
+	})
+	for i := range filtered.Iterator {
+		fmt.Println(i)
+	}
+	// Unordered output:
+	// 3
+	// 4
+}
+
+func ExampleReduce() {
+	set := NewWith(3, 1, 2)
+
+	sum := Reduce(set, 0, func(agg, v int) int {
+		return agg + v
+	})
+	fmt.Println(sum)
+	// Output: 6
+}
+
+func ExampleReduceRight() {
+	set := NewOrderedWith(3, 1, 2)
+
+	sum := ReduceRight(set, 0, func(agg, v int) int {
+		fmt.Println(v)
+		return agg + v
+	})
+	fmt.Println(sum)
+	// Output:
+	// 2
+	// 1
+	// 3
+	// 6
+}
+
+func ExampleForEach() {
+	set := NewWith(3, 1, 2)
+
+	ForEach(set, func(i int) {
+		fmt.Println(i)
+	})
+	// Unordered output:
+	// 1
+	// 2
+	// 3
+}
+
+func ExampleForEachRight() {
+	set := NewOrderedWith(3, 1, 2)
+
+	ForEachRight(set, func(i int) {
+		fmt.Println(i)
+	})
+	// Output:
+	// 2
+	// 1
+	// 3
 }

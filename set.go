@@ -245,3 +245,69 @@ func Chunk[K comparable](s Set[K], n int) iter.Seq[Set[K]] {
 func IsEmpty[K comparable](s Set[K]) bool {
 	return s.Cardinality() == 0
 }
+
+// Map applies the function to each element in the set and returns a new set with the results.
+func Map[K comparable, V comparable](s Set[K], f func(K) V) Set[V] {
+	m := New[V]()
+	for k := range s.Iterator {
+		m.Add(f(k))
+	}
+	return m
+}
+
+// MapTo applies the function to each element in the set and adds the results to the destination set.
+func MapTo[K comparable, V comparable](s Set[K], d Set[V], f func(K) V) {
+	for k := range s.Iterator {
+		d.Add(f(k))
+	}
+}
+
+// MapToSlice applies the function to each element in the set and returns a slice with the results.
+func MapToSlice[K comparable, V any](s Set[K], f func(K) V) []V {
+	o := make([]V, 0, s.Cardinality())
+	for v := range s.Iterator {
+		o = append(o, f(v))
+	}
+	return o
+}
+
+// Filter applies the function to each element in the set and returns a new set with the elements for which the function
+// returns true.
+func Filter[K comparable](s Set[K], f func(K) bool) Set[K] {
+	m := s.NewEmpty()
+	for k := range s.Iterator {
+		if f(k) {
+			m.Add(k)
+		}
+	}
+	return m
+}
+
+// FilterTo applies the function to each element in the set and adds the elements for which the function returns true to
+// the destination set.
+func FilterTo[K comparable](s Set[K], d Set[K], f func(K) bool) {
+	s.Iterator(func(k K) bool {
+		if f(k) {
+			d.Add(k)
+		}
+		return true
+	})
+}
+
+// Reduce applies the function to each element in the set and returns the accumulated value. "initial" is the initial
+// value of the accumulator. The function is called with the accumulator and each element in turn. The result of the
+// function is the new accumulator value. The final accumulator value is returned.
+func Reduce[K comparable, O any](s Set[K], initial O, f func(agg O, k K) O) O {
+	v := initial
+	for k := range s.Iterator {
+		v = f(v, k)
+	}
+	return v
+}
+
+// ForEach calls the function with each element in the set.
+func ForEach[K comparable](s Set[K], f func(K)) {
+	for k := range s.Iterator {
+		f(k)
+	}
+}
