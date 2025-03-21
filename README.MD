@@ -71,6 +71,12 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Min(aSet)` : Returns the min element in the set as determined by the min builtin.
 * `sets.Chunk(aSet,n)` : Chunks the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
 * `sets.IsEmpty(aSet)` : Returns true if the set is empty, otherwise false.
+* `sets.Map(aSet, func(v V) X { return ... }) bSet` : Maps the elements of the set to a new set.
+* `sets.MapTo(aSet, bSet, func(v V) X { return ... })` : Maps the elements of aSet into bSet.
+* `sets.MapToSlice(aSet, func(v V) X { return ... }) aSlice` : Maps the elements of the set to a new slice.
+* `sets.Filter(aSet, func(v V) bool { return true/false }) bSet` : Filters the elements of the set and returns a new set.
+* `sets.Reduce(aSet, X, func(X, K) X { return ... }) X` : Reduces the set to a single value.
+* `sets.ForEach(aSet, func(v V))` : calls the provided function with each set member.
 
 ## OrderedSet Helpers
 
@@ -80,6 +86,8 @@ These helpers work on all OrderedSet types.
 * `sets.IsSorted(aOrderedSet)` : Returns true if the OrderedSet is sorted in ascending order.
 * `sets.Reverse(aOrderedSet)` :  Returns a new OrderedSet with the elements in the reverse order of the original OrderedSet.
 * `sets.Sorted(aOrderedSet)` : Return a copy of aOrderedSet with the elements sorted in ascending order. Does not modify the original set.
+* `sets.ReduceRight(aSet, X, func(X, K) X { return ... }) X` : Reduces the set to a single value in reverse order.
+* `sets.ForEachRight(aSet, func(K) { ... })` : calls the provided function with each set member in reverse order.
 
 ## Custom Set Types
 

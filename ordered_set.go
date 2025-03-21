@@ -81,3 +81,20 @@ func Sorted[K cmp.Ordered](s OrderedSet[K]) OrderedSet[K] {
 	out.Sort()
 	return out
 }
+
+// ReduceRight reduces the set from right to left using the given function. "initial" is the initial value of the
+// accumulator. The function is called with the accumulator and the element backwards. The result of the function is the
+// new accumulator value. The final accumulator value is returned.
+func ReduceRight[K cmp.Ordered, O any](s OrderedSet[K], initial O, fn func(agg O, k K) O) O {
+	out := initial
+	for _, k := range s.Backwards {
+		out = fn(out, k)
+	}
+	return out
+}
+
+func ForEachRight[K cmp.Ordered](s OrderedSet[K], fn func(k K)) {
+	for _, k := range s.Backwards {
+		fn(k)
+	}
+}
