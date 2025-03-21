@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func ExampleSet() {
@@ -326,12 +328,20 @@ func ExampleEqual() {
 		fmt.Println("a and b are equal")
 	}
 
+	// how to compare two sets using [cmp.Diff] - pass `cmp.Comparer(Equal[T])`
+	if diff := cmp.Diff(a, b, cmp.Comparer(Equal[int])); diff != "" {
+		fmt.Println(diff)
+	} else {
+		fmt.Println("no diff")
+	}
+
 	b.Add(2)
 	if !Equal(a, b) {
 		fmt.Println("a and b are not equal now")
 	}
 	// Output:
 	// a and b are equal
+	// no diff
 	// a and b are not equal now
 }
 
@@ -395,12 +405,20 @@ func ExampleEqualOrdered() {
 		fmt.Println("a and b are equal")
 	}
 
+	// how to compare two ordered sets using [cmp.Diff] - pass `cmp.Comparer(EqualOrdered[T])`
+	if diff := cmp.Diff(a, b, cmp.Comparer(EqualOrdered[int])); diff != "" {
+		fmt.Println(diff)
+	} else {
+		fmt.Println("no ordered diff")
+	}
+
 	b.Add(2)
 	if !EqualOrdered(a, b) {
 		fmt.Println("a and b are not equal now")
 	}
 	// Output:
 	// a and b are equal
+	// no ordered diff
 	// a and b are not equal now
 }
 

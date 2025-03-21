@@ -362,6 +362,26 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 		t.Fatalf("expected %d elements, got %d", len(sm.stateO), sm.set.Cardinality())
 	}
 
+	cmps := sm.set.NewEmpty()
+	AppendSeq(cmps, slices.Values(sm.stateO))
+	if !Equal(sm.set, cmps) {
+		t.Fatalf("expected %v to be equal to %v", Elements(sm.set), Elements(cmps))
+	}
+
+	// ensure the set is comparable
+	if diff := cmp.Diff(sm.set, cmps, cmp.Comparer(Equal[int])); diff != "" {
+		t.Fatalf("unexpected elements (-want +got):\n%s", diff)
+	}
+
+	// ensure the set is comparable when embedded
+	type Test struct {
+		S Set[int]
+	}
+
+	if diff := cmp.Diff(Test{S: sm.set}, Test{S: cmps}, cmp.Comparer(Equal[int])); diff != "" {
+		t.Fatalf("unexpected elements (-want +got):\n%s", diff)
+	}
+
 	if diff := cmp.Diff(slices.Collect(maps.Keys(sm.stateI)), Elements(sm.set), sortInts()); diff != "" {
 		t.Fatalf("unexpected elements (-want +got):\n%s", diff)
 	}
