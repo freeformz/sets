@@ -246,9 +246,9 @@ func IsEmpty[K comparable](s Set[K]) bool {
 	return s.Cardinality() == 0
 }
 
-// Map applies the function to each element in the set and returns a new set with the results.
-func Map[K comparable, V comparable](s Set[K], f func(K) V) Set[V] {
-	m := New[V]()
+// MapBy applies the function to each element in the set and returns a new set with the results.
+func MapBy[K comparable, V comparable](s Set[K], f func(K) V) Set[V] {
+	m := NewMap[V]()
 	for k := range s.Iterator {
 		m.Add(f(k))
 	}

@@ -43,7 +43,6 @@ go get github.com/freeformz/sets
 ## JSON
 
 Sets marshal to/from JSON as JSON arrays.
-They must be initialized before doing so as the zero value of an interface is nil.
 A JSON array with repeated values unmarshaled to a Set will not preserve duplicates.
 An empty Set marshals to `[]`.
 OrderedSets preserve order when {un,}marshaling, while Sets do not.
@@ -71,7 +70,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Min(aSet)` : Returns the min element in the set as determined by the min builtin.
 * `sets.Chunk(aSet,n)` : Chunks the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
 * `sets.IsEmpty(aSet)` : Returns true if the set is empty, otherwise false.
-* `sets.Map(aSet, func(v V) X { return ... }) bSet` : Maps the elements of the set to a new set.
+* `sets.MapBy(aSet, func(v V) X { return ... }) bSet` : Maps the elements of the set to a new set.
 * `sets.MapTo(aSet, bSet, func(v V) X { return ... })` : Maps the elements of aSet into bSet.
 * `sets.MapToSlice(aSet, func(v V) X { return ... }) aSlice` : Maps the elements of the set to a new slice.
 * `sets.Filter(aSet, func(v V) bool { return true/false }) bSet` : Filters the elements of the set and returns a new set.

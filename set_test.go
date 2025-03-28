@@ -28,7 +28,7 @@ func TestMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:    New[int](),
+		set:    NewMap[int](),
 		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
@@ -40,7 +40,7 @@ func TestSyncMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:    NewSync[int](),
+		set:    NewSyncMap[int](),
 		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
@@ -109,6 +109,7 @@ func (sm *SetStateMachine) Contains(t *rapid.T) {
 		t.Fatalf("expected %v to exist: %v", i, got)
 	}
 }
+
 func (sm *SetStateMachine) Clone(t *rapid.T) {
 	sm.set = sm.set.Clone()
 }
@@ -181,7 +182,7 @@ func (sm *SetStateMachine) Intersection(t *rapid.T) {
 	}
 }
 
-func (sm *SetStateMachine) add(t *rapid.T, i int) {
+func (sm *SetStateMachine) add(_ *rapid.T, i int) {
 	if _, exist := sm.stateI[i]; exist {
 		return
 	}
@@ -388,6 +389,8 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 }
 
 func testSetConcurrency(t *testing.T, set Set[int]) {
+	t.Helper()
+
 	started := make(chan struct{})
 	start := make(chan struct{})
 	var finished sync.WaitGroup
@@ -430,7 +433,7 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 			finished.Done()
 		},
 		func(base int) {
-			other := New[int]()
+			other := NewMap[int]()
 			for i := range (base + 1) * 100 {
 				other.Add(i)
 			}
@@ -486,7 +489,7 @@ func TestLockedOrdered_Concurrency(t *testing.T) {
 func TestSync_Concurrency(t *testing.T) {
 	t.Parallel()
 	testSetConcurrency(t,
-		NewSyncFrom(slices.Values([]int{9, 8, 7, 6, 5, 4, 3, 2, 1})),
+		NewSyncMapFrom(slices.Values([]int{9, 8, 7, 6, 5, 4, 3, 2, 1})),
 	)
 }
 
@@ -574,7 +577,7 @@ func TestChunk_Ordered(t *testing.T) {
 
 func TestChunk(t *testing.T) {
 	t.Parallel()
-	s := New[int]()
+	s := NewMap[int]()
 	for i := range 22 {
 		s.Add(i)
 	}
@@ -614,9 +617,9 @@ type foo struct {
 
 func (f *foo) Foo() {}
 
-func TestSet_json(t *testing.T) {
+func TestLocked_JSON(t *testing.T) {
 	t.Parallel()
-	set := New[Foo]()
+	set := NewLocked[Foo]()
 	set.Add(&foo{})
 	set.Add(&bar{})
 	d, err := json.Marshal(set)
@@ -629,7 +632,7 @@ func TestSet_json(t *testing.T) {
 		t.Fatalf("expected error: %v", err)
 	}
 
-	set2 := New[foo]()
+	set2 := NewLocked[foo]()
 	set2.Add(foo{Baz: "bar"})
 	set2.Add(foo{Baz: "foo"})
 
@@ -642,7 +645,7 @@ func TestSet_json(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	set3 := New[*foo]()
+	set3 := NewLocked[*foo]()
 	set3.Add(&foo{Baz: "bar"})
 	set3.Add(&foo{Baz: "foo"})
 	d, err = json.Marshal(set3)
@@ -654,7 +657,7 @@ func TestSet_json(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	set4 := New[chan foo]()
+	set4 := NewLocked[chan foo]()
 	set4.Add(make(chan foo))
 	set4.Add(make(chan foo))
 	// see comparison rules for channels
@@ -665,5 +668,260 @@ func TestSet_json(t *testing.T) {
 	// can't marshal a set of channels
 	if err == nil {
 		t.Fatalf("expected error: %v", err)
+	}
+
+	type Bar struct {
+		Set *Locked[int]
+	}
+
+	b := Bar{Set: NewLocked[int]()}
+	b.Set.Add(1)
+	b.Set.Add(2)
+
+	d, err = json.Marshal(b)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	var c Bar
+	if err = json.Unmarshal(d, &c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(b.Set, c.Set) {
+		t.Fatalf("expected %v, got %v", Elements(b.Set), Elements(c.Set))
+	}
+}
+
+func TestMap_JSON(t *testing.T) {
+	t.Parallel()
+	set := NewMap[Foo]()
+	set.Add(&foo{})
+	set.Add(&bar{})
+	d, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	// can't unmarshal into a set of interfaces
+	if err := json.Unmarshal(d, &set); err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+
+	set2 := NewMap[foo]()
+	set2.Add(foo{Baz: "bar"})
+	set2.Add(foo{Baz: "foo"})
+
+	d, err = json.Marshal(set2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &set2); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	set3 := NewMap[*foo]()
+	set3.Add(&foo{Baz: "bar"})
+	set3.Add(&foo{Baz: "foo"})
+	d, err = json.Marshal(set3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &set3); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	set4 := NewMap[chan foo]()
+	set4.Add(make(chan foo))
+	set4.Add(make(chan foo))
+	// see comparison rules for channels
+	if set.Cardinality() != 2 {
+		t.Fatalf("expected 2 elements, got %d", set.Cardinality())
+	}
+	_, err = json.Marshal(set4)
+	// can't marshal a set of channels
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+
+	type Bar struct {
+		Set *Map[int]
+	}
+
+	b := Bar{Set: NewMap[int]()}
+	b.Set.Add(1)
+	b.Set.Add(2)
+
+	d, err = json.Marshal(b)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	var c Bar
+	if err = json.Unmarshal(d, &c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(b.Set, c.Set) {
+		t.Fatalf("expected %v, got %v", Elements(b.Set), Elements(c.Set))
+	}
+}
+
+func TestOrdered_JSON(t *testing.T) {
+	t.Parallel()
+
+	a := NewOrdered[int]()
+	a.Add(1)
+	a.Add(2)
+
+	j, err := json.Marshal(a)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(j))
+	var b *Ordered[int]
+	if err = json.Unmarshal(j, &b); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(a, b) {
+		t.Fatalf("expected %v, got %v", Elements(a), Elements(b))
+	}
+
+	type Bar struct {
+		Set *Ordered[int]
+	}
+
+	c := Bar{Set: NewOrdered[int]()}
+	c.Set.Add(1)
+	c.Set.Add(2)
+
+	j, err = json.Marshal(c)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(j))
+	var d Bar
+	if err = json.Unmarshal(j, &d); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(c.Set, d.Set) {
+		t.Fatalf("expected %v, got %v", Elements(c.Set), Elements(d.Set))
+	}
+}
+
+func TestLockedOrdered_JSON(t *testing.T) {
+	t.Parallel()
+
+	a := NewLockedOrdered[int]()
+	a.Add(1)
+	a.Add(2)
+
+	j, err := json.Marshal(a)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(j))
+	var b *LockedOrdered[int]
+	if err = json.Unmarshal(j, &b); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(a, b) {
+		t.Fatalf("expected %v, got %v", Elements(a), Elements(b))
+	}
+
+	type Bar struct {
+		Set *LockedOrdered[int]
+	}
+
+	c := Bar{Set: NewLockedOrdered[int]()}
+	c.Set.Add(1)
+	c.Set.Add(2)
+
+	j, err = json.Marshal(c)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(j))
+	var d Bar
+	if err = json.Unmarshal(j, &d); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(c.Set, d.Set) {
+		t.Fatalf("expected %v, got %v", Elements(c.Set), Elements(d.Set))
+	}
+}
+
+func TestSyncMap_JSON(t *testing.T) {
+	t.Parallel()
+	set := NewSyncMap[Foo]()
+	set.Add(&foo{})
+	set.Add(&bar{})
+	d, err := json.Marshal(set)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	// can't unmarshal into a set of interfaces
+	if err := json.Unmarshal(d, &set); err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+
+	set2 := NewSyncMap[foo]()
+	set2.Add(foo{Baz: "bar"})
+	set2.Add(foo{Baz: "foo"})
+
+	d, err = json.Marshal(set2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &set2); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	set3 := NewSyncMap[*foo]()
+	set3.Add(&foo{Baz: "bar"})
+	set3.Add(&foo{Baz: "foo"})
+	d, err = json.Marshal(set3)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	if err = json.Unmarshal(d, &set3); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	set4 := NewSyncMap[chan foo]()
+	set4.Add(make(chan foo))
+	set4.Add(make(chan foo))
+	// see comparison rules for channels
+	if set.Cardinality() != 2 {
+		t.Fatalf("expected 2 elements, got %d", set.Cardinality())
+	}
+	_, err = json.Marshal(set4)
+	// can't marshal a set of channels
+	if err == nil {
+		t.Fatalf("expected error: %v", err)
+	}
+
+	type Bar struct {
+		Set *SyncMap[int]
+	}
+
+	b := Bar{Set: NewSyncMap[int]()}
+	b.Set.Add(1)
+	b.Set.Add(2)
+
+	d, err = json.Marshal(b)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t.Log("JSON:", string(d))
+	var c Bar
+	if err = json.Unmarshal(d, &c); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !Equal(b.Set, c.Set) {
+		t.Fatalf("expected %v, got %v", Elements(b.Set), Elements(c.Set))
 	}
 }

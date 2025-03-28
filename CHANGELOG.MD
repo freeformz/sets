@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## v0.9.0
+
+* Renames
+  * func Map to func MapBy
+  * func New to func NewMap
+  * func NewFrom to func NewMapFrom
+  * func NewWith to func NewMapWith
+* Set types are now exported, so that ...
+* Concrete types can be used in structs and json.Unmarshaled to.
+  * sets.Map (basic set type)
+  * sets.Locked (basic locked set type)
+  * sets.Ordered (basic ordred set type)
+  * sets.LockedOrdered (basic locked+ordered set type)
+  * sets.SyncMap (sync.Map based set type)
+* Added more JSON tests, especially for above
 
 ## v0.8.0
 

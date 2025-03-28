@@ -8,37 +8,39 @@ import (
 	"slices"
 )
 
-type mapSet[M comparable] struct {
+type Map[M comparable] struct {
 	set map[M]struct{}
 }
 
-// New returns an empty Set[M] instance.
-func New[M comparable]() Set[M] {
-	return &mapSet[M]{
+var x Set[int] = new(Map[int])
+
+// NewMap returns an empty Set[M] instance.
+func NewMap[M comparable]() *Map[M] {
+	return &Map[M]{
 		set: make(map[M]struct{}),
 	}
 }
 
-// NewFrom returns a new Set[M] filled with the values from the sequence.
-func NewFrom[M comparable](seq iter.Seq[M]) Set[M] {
-	s := New[M]()
+// NewMapFrom returns a new Set[M] filled with the values from the sequence.
+func NewMapFrom[M comparable](seq iter.Seq[M]) *Map[M] {
+	s := NewMap[M]()
 	for x := range seq {
 		s.Add(x)
 	}
 	return s
 }
 
-// NewWith the values provides. Duplicates are removed.
-func NewWith[M comparable](m ...M) Set[M] {
-	return NewFrom(slices.Values(m))
+// NewMapWith the values provides. Duplicates are removed.
+func NewMapWith[M comparable](m ...M) *Map[M] {
+	return NewMapFrom(slices.Values(m))
 }
 
-func (s *mapSet[M]) Contains(m M) bool {
+func (s *Map[M]) Contains(m M) bool {
 	_, ok := s.set[m]
 	return ok
 }
 
-func (s *mapSet[M]) Clear() int {
+func (s *Map[M]) Clear() int {
 	n := len(s.set)
 	for k := range s.set {
 		delete(s.set, k)
@@ -46,7 +48,7 @@ func (s *mapSet[M]) Clear() int {
 	return n
 }
 
-func (s *mapSet[M]) Add(m M) bool {
+func (s *Map[M]) Add(m M) bool {
 	if s.Contains(m) {
 		return false
 	}
@@ -54,7 +56,7 @@ func (s *mapSet[M]) Add(m M) bool {
 	return true
 }
 
-func (s *mapSet[M]) Remove(m M) bool {
+func (s *Map[M]) Remove(m M) bool {
 	if !s.Contains(m) {
 		return false
 	}
@@ -62,12 +64,12 @@ func (s *mapSet[M]) Remove(m M) bool {
 	return true
 }
 
-func (s *mapSet[M]) Cardinality() int {
+func (s *Map[M]) Cardinality() int {
 	return len(s.set)
 }
 
 // Iterator yields all elements in the set.
-func (s *mapSet[M]) Iterator(yield func(M) bool) {
+func (s *Map[M]) Iterator(yield func(M) bool) {
 	for k := range s.set {
 		if !yield(k) {
 			return
@@ -75,15 +77,15 @@ func (s *mapSet[M]) Iterator(yield func(M) bool) {
 	}
 }
 
-func (s *mapSet[M]) Clone() Set[M] {
-	return NewFrom(s.Iterator)
+func (s *Map[M]) Clone() Set[M] {
+	return NewMapFrom(s.Iterator)
 }
 
-func (s *mapSet[M]) NewEmpty() Set[M] {
-	return New[M]()
+func (s *Map[M]) NewEmpty() Set[M] {
+	return NewMap[M]()
 }
 
-func (s *mapSet[M]) Pop() (M, bool) {
+func (s *Map[M]) Pop() (M, bool) {
 	for k := range s.set {
 		delete(s.set, k)
 		return k, true
@@ -92,12 +94,12 @@ func (s *mapSet[M]) Pop() (M, bool) {
 	return m, false
 }
 
-func (s *mapSet[M]) String() string {
+func (s *Map[M]) String() string {
 	var m M
 	return fmt.Sprintf("Set[%T](%v)", m, slices.Collect(maps.Keys(s.set)))
 }
 
-func (s *mapSet[M]) MarshalJSON() ([]byte, error) {
+func (s *Map[M]) MarshalJSON() ([]byte, error) {
 	v := slices.Collect(s.Iterator)
 	if len(v) == 0 {
 		return []byte("[]"), nil
@@ -110,13 +112,16 @@ func (s *mapSet[M]) MarshalJSON() ([]byte, error) {
 	return d, nil
 }
 
-func (s *mapSet[M]) UnmarshalJSON(d []byte) error {
+func (s *Map[M]) UnmarshalJSON(d []byte) error {
 	var um []M
 	if err := json.Unmarshal(d, &um); err != nil {
 		return fmt.Errorf("unmarshaling map set: %w", err)
 	}
 
 	s.Clear()
+	if s.set == nil {
+		s.set = make(map[M]struct{})
+	}
 	for _, m := range um {
 		s.Add(m)
 	}

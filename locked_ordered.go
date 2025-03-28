@@ -9,28 +9,25 @@ import (
 	"sync"
 )
 
-type lockedOrdered[M cmp.Ordered] struct {
+type LockedOrdered[M cmp.Ordered] struct {
 	set OrderedSet[M]
-	*sync.RWMutex
+	sync.RWMutex
 	*sync.Cond
 	iterating bool
 }
 
-var _ Set[int] = new(lockedOrdered[int])
+var _ Set[int] = new(LockedOrdered[int])
 
 // NewLockedOrdered returns an empty OrderedSet[M] instance that is safe for concurrent use.
-func NewLockedOrdered[M cmp.Ordered]() OrderedSet[M] {
-	mu := &sync.RWMutex{}
-	return &lockedOrdered[M]{
-		set:     NewOrdered[M](),
-		RWMutex: mu,
-		Cond:    sync.NewCond(mu),
-	}
+func NewLockedOrdered[M cmp.Ordered]() *LockedOrdered[M] {
+	set := &LockedOrdered[M]{set: NewOrdered[M]()}
+	set.Cond = sync.NewCond(&set.RWMutex)
+	return set
 }
 
 // NewLockedOrderedFrom returns a new OrderedSet[M] instance filled with the values from the sequence. The set is safe
 // for concurrent use.
-func NewLockedOrderedFrom[M cmp.Ordered](seq iter.Seq[M]) OrderedSet[M] {
+func NewLockedOrderedFrom[M cmp.Ordered](seq iter.Seq[M]) *LockedOrdered[M] {
 	s := NewLockedOrdered[M]()
 	for x := range seq {
 		s.Add(x)
@@ -39,31 +36,28 @@ func NewLockedOrderedFrom[M cmp.Ordered](seq iter.Seq[M]) OrderedSet[M] {
 }
 
 // NewOrderedWith the values provides. Duplicates are removed.
-func NewLockedOrderedWith[M cmp.Ordered](m ...M) OrderedSet[M] {
+func NewLockedOrderedWith[M cmp.Ordered](m ...M) *LockedOrdered[M] {
 	return NewLockedOrderedFrom(slices.Values(m))
 }
 
 // NewLockedOrderedWrapping returns an OrderedSet[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
 func NewLockedOrderedWrapping[M cmp.Ordered](set OrderedSet[M]) OrderedSet[M] {
-	if _, lok := set.(locker); lok {
-		return set
+	if lset, ok := set.(*LockedOrdered[M]); ok {
+		return lset
 	}
-	mu := &sync.RWMutex{}
-	return &lockedOrdered[M]{
-		set:     set,
-		RWMutex: mu,
-		Cond:    sync.NewCond(mu),
-	}
+	lset := NewLockedOrdered[M]()
+	lset.set = set
+	return lset
 }
 
-func (s *lockedOrdered[M]) Contains(m M) bool {
+func (s *LockedOrdered[M]) Contains(m M) bool {
 	s.RLock()
 	defer s.RUnlock()
 	return s.set.Contains(m)
 }
 
-func (s *lockedOrdered[M]) Clear() int {
+func (s *LockedOrdered[M]) Clear() int {
 	s.L.Lock()
 	if s.iterating {
 		s.Wait()
@@ -72,7 +66,7 @@ func (s *lockedOrdered[M]) Clear() int {
 	return s.set.Clear()
 }
 
-func (s *lockedOrdered[M]) Add(m M) bool {
+func (s *LockedOrdered[M]) Add(m M) bool {
 	s.L.Lock()
 	if s.iterating {
 		s.Wait()
@@ -81,7 +75,7 @@ func (s *lockedOrdered[M]) Add(m M) bool {
 	return s.set.Add(m)
 }
 
-func (s *lockedOrdered[M]) Remove(m M) bool {
+func (s *LockedOrdered[M]) Remove(m M) bool {
 	s.L.Lock()
 	if s.iterating {
 		s.Wait()
@@ -90,7 +84,7 @@ func (s *lockedOrdered[M]) Remove(m M) bool {
 	return s.set.Remove(m)
 }
 
-func (s *lockedOrdered[M]) Cardinality() int {
+func (s *LockedOrdered[M]) Cardinality() int {
 	if s == nil {
 		return 0
 	}
@@ -101,7 +95,7 @@ func (s *lockedOrdered[M]) Cardinality() int {
 
 // Iterator yields all elements in the set in order. It holds a lock for the duration of iteration. Calling methods other than
 // `Contains` and `Cardinality` will block until the iteration is complete.
-func (s *lockedOrdered[M]) Iterator(yield func(M) bool) {
+func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
 	s.L.Lock()
 	s.iterating = true
 	defer func() {
@@ -113,12 +107,12 @@ func (s *lockedOrdered[M]) Iterator(yield func(M) bool) {
 	s.set.Iterator(yield)
 }
 
-func (s *lockedOrdered[M]) Clone() Set[M] {
+func (s *LockedOrdered[M]) Clone() Set[M] {
 	return NewLockedOrderedFrom(s.Iterator)
 }
 
 // Ordered iteration yields the index and value of each element in the set in order.
-func (s *lockedOrdered[M]) Ordered(yield func(int, M) bool) {
+func (s *LockedOrdered[M]) Ordered(yield func(int, M) bool) {
 	s.L.Lock()
 	s.iterating = true
 	defer func() {
@@ -130,7 +124,7 @@ func (s *lockedOrdered[M]) Ordered(yield func(int, M) bool) {
 	s.set.Ordered(yield)
 }
 
-func (s *lockedOrdered[M]) Backwards(yield func(int, M) bool) {
+func (s *LockedOrdered[M]) Backwards(yield func(int, M) bool) {
 	s.L.Lock()
 	s.iterating = true
 	defer func() {
@@ -142,15 +136,15 @@ func (s *lockedOrdered[M]) Backwards(yield func(int, M) bool) {
 	s.set.Backwards(yield)
 }
 
-func (s *lockedOrdered[M]) NewEmptyOrdered() OrderedSet[M] {
+func (s *LockedOrdered[M]) NewEmptyOrdered() OrderedSet[M] {
 	return NewLockedOrdered[M]()
 }
 
-func (s *lockedOrdered[M]) NewEmpty() Set[M] {
+func (s *LockedOrdered[M]) NewEmpty() Set[M] {
 	return NewLockedOrdered[M]()
 }
 
-func (s *lockedOrdered[M]) Pop() (M, bool) {
+func (s *LockedOrdered[M]) Pop() (M, bool) {
 	s.L.Lock()
 	if s.iterating {
 		s.Wait()
@@ -160,7 +154,7 @@ func (s *lockedOrdered[M]) Pop() (M, bool) {
 	return s.set.Pop()
 }
 
-func (s *lockedOrdered[M]) Sort() {
+func (s *LockedOrdered[M]) Sort() {
 	s.L.Lock()
 	if s.iterating {
 		s.Wait()
@@ -170,28 +164,28 @@ func (s *lockedOrdered[M]) Sort() {
 	s.set.Sort()
 }
 
-func (s *lockedOrdered[M]) At(i int) (M, bool) {
+func (s *LockedOrdered[M]) At(i int) (M, bool) {
 	s.RLock()
 	defer s.RUnlock()
 
 	return s.set.At(i)
 }
 
-func (s *lockedOrdered[M]) Index(m M) int {
+func (s *LockedOrdered[M]) Index(m M) int {
 	s.RLock()
 	defer s.RUnlock()
 
 	return s.set.Index(m)
 }
 
-func (s *lockedOrdered[M]) String() string {
+func (s *LockedOrdered[M]) String() string {
 	s.RLock()
 	defer s.RUnlock()
 
 	return "Locked" + s.set.String()
 }
 
-func (s *lockedOrdered[M]) MarshalJSON() ([]byte, error) {
+func (s *LockedOrdered[M]) MarshalJSON() ([]byte, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -208,12 +202,20 @@ func (s *lockedOrdered[M]) MarshalJSON() ([]byte, error) {
 	return d, nil
 }
 
-func (s *lockedOrdered[M]) UnmarshalJSON(d []byte) error {
-	s.L.Lock()
+// UnmarshalJSON implements json.Unmarshaler. It will unmarshal the JSON data into the set.
+func (s *LockedOrdered[M]) UnmarshalJSON(d []byte) error {
+	s.Lock()
+	if s.Cond == nil {
+		s.Cond = sync.NewCond(&s.RWMutex)
+	}
 	if s.iterating {
 		s.Wait()
 	}
-	defer s.L.Unlock()
+	defer s.Unlock()
+
+	if s.set == nil {
+		s.set = NewOrdered[M]()
+	}
 
 	um, ok := s.set.(json.Unmarshaler)
 	if !ok {
