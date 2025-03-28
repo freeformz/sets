@@ -43,8 +43,8 @@ func NewLockedOrderedWith[M cmp.Ordered](m ...M) *LockedOrdered[M] {
 // NewLockedOrderedWrapping returns an OrderedSet[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
 func NewLockedOrderedWrapping[M cmp.Ordered](set OrderedSet[M]) OrderedSet[M] {
-	if lset, ok := set.(*LockedOrdered[M]); ok {
-		return lset
+	if _, ok := set.(locker); ok {
+		return set
 	}
 	lset := NewLockedOrdered[M]()
 	lset.set = set

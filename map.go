@@ -12,7 +12,7 @@ type Map[M comparable] struct {
 	set map[M]struct{}
 }
 
-var x Set[int] = new(Map[int])
+var _ Set[int] = new(Map[int])
 
 // NewMap returns an empty Set[M] instance.
 func NewMap[M comparable]() *Map[M] {

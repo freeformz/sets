@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.9.1
+
+* Small staticcheck fixes
+
 ## v0.9.0
 
 * Renames
