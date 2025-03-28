@@ -8,6 +8,8 @@ A generics based go set package that supports modern go features like iterators.
 
 NOTE: This is currently a WIP. I don't expect to make any breaking API changes atm, but am not able to rule it out yet.
 
+If you like this repo, please consider checking out my [iterator tools repo](https://github.com/freeformz/seq).
+
 ## Install
 
 Use go get to install this package.
