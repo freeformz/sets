@@ -41,8 +41,8 @@ func NewLockedWith[M comparable](m ...M) *Locked[M] {
 // NewLockedWrapping returns a Set[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
 func NewLockedWrapping[M comparable](set Set[M]) Set[M] {
-	if lset, ok := set.(*Locked[M]); ok {
-		return lset
+	if _, ok := set.(locker); ok {
+		return set
 	}
 
 	lset := NewLocked[M]()
