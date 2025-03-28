@@ -8,27 +8,24 @@ import (
 	"sync"
 )
 
-type lockedMap[M comparable] struct {
+type Locked[M comparable] struct {
 	set Set[M]
-	*sync.RWMutex
+	sync.RWMutex
 	*sync.Cond
 	iterating bool
 }
 
-var _ Set[int] = new(lockedMap[int])
+var _ Set[int] = new(Locked[int])
 
 // NewLocked returns an empty Set[M] that is safe for concurrent use.
-func NewLocked[M comparable]() Set[M] {
-	mu := &sync.RWMutex{}
-	return &lockedMap[M]{
-		set:     New[M](),
-		RWMutex: mu,
-		Cond:    sync.NewCond(mu),
-	}
+func NewLocked[M comparable]() *Locked[M] {
+	l := &Locked[M]{set: NewMap[M]()}
+	l.Cond = sync.NewCond(&l.RWMutex)
+	return l
 }
 
 // NewLockedFrom returns a new Set[M] filled with the values from the sequence.
-func NewLockedFrom[M comparable](seq iter.Seq[M]) Set[M] {
+func NewLockedFrom[M comparable](seq iter.Seq[M]) *Locked[M] {
 	s := NewLocked[M]()
 	for x := range seq {
 		s.Add(x)
@@ -37,40 +34,30 @@ func NewLockedFrom[M comparable](seq iter.Seq[M]) Set[M] {
 }
 
 // NewLockedWith the values provides. Duplicates are removed.
-func NewLockedWith[M comparable](m ...M) Set[M] {
+func NewLockedWith[M comparable](m ...M) *Locked[M] {
 	return NewLockedFrom(slices.Values(m))
-}
-
-type locker interface {
-	Lock()
-	Unlock()
-	RLock()
-	RUnlock()
-	Wait()
-	Broadcast()
 }
 
 // NewLockedWrapping returns a Set[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
 func NewLockedWrapping[M comparable](set Set[M]) Set[M] {
-	if _, lok := set.(locker); lok {
-		return set
+	if lset, ok := set.(*Locked[M]); ok {
+		return lset
 	}
-	mu := &sync.RWMutex{}
-	return &lockedMap[M]{
-		set:     set,
-		RWMutex: mu,
-		Cond:    sync.NewCond(mu),
-	}
+
+	lset := NewLocked[M]()
+	lset.set = set
+
+	return lset
 }
 
-func (s *lockedMap[M]) Contains(m M) bool {
+func (s *Locked[M]) Contains(m M) bool {
 	s.RWMutex.RLock()
 	defer s.RWMutex.RUnlock()
 	return s.set.Contains(m)
 }
 
-func (s *lockedMap[M]) Clear() int {
+func (s *Locked[M]) Clear() int {
 	s.Cond.L.Lock()
 	if s.iterating {
 		s.Cond.Wait()
@@ -79,7 +66,7 @@ func (s *lockedMap[M]) Clear() int {
 	return s.set.Clear()
 }
 
-func (s *lockedMap[M]) Add(m M) bool {
+func (s *Locked[M]) Add(m M) bool {
 	s.Cond.L.Lock()
 	if s.iterating {
 		s.Cond.Wait()
@@ -89,7 +76,7 @@ func (s *lockedMap[M]) Add(m M) bool {
 	return s.set.Add(m)
 }
 
-func (s *lockedMap[M]) Remove(m M) bool {
+func (s *Locked[M]) Remove(m M) bool {
 	s.Cond.L.Lock()
 	if s.iterating {
 		s.Cond.Wait()
@@ -99,7 +86,7 @@ func (s *lockedMap[M]) Remove(m M) bool {
 	return s.set.Remove(m)
 }
 
-func (s *lockedMap[M]) Cardinality() int {
+func (s *Locked[M]) Cardinality() int {
 	if s == nil {
 		return 0
 	}
@@ -111,7 +98,7 @@ func (s *lockedMap[M]) Cardinality() int {
 
 // Iterator yields all elements in the set. It holds a lock for the duration of iteration. Calling methods other than
 // `Contains` and `Cardinality` will block until the iteration is complete.
-func (s *lockedMap[M]) Iterator(yield func(M) bool) {
+func (s *Locked[M]) Iterator(yield func(M) bool) {
 	s.Cond.L.Lock()
 	s.iterating = true
 	defer func() {
@@ -123,15 +110,15 @@ func (s *lockedMap[M]) Iterator(yield func(M) bool) {
 	s.set.Iterator(yield)
 }
 
-func (s *lockedMap[M]) Clone() Set[M] {
+func (s *Locked[M]) Clone() Set[M] {
 	return NewLockedFrom(s.Iterator)
 }
 
-func (s *lockedMap[M]) NewEmpty() Set[M] {
+func (s *Locked[M]) NewEmpty() Set[M] {
 	return NewLocked[M]()
 }
 
-func (s *lockedMap[M]) Pop() (M, bool) {
+func (s *Locked[M]) Pop() (M, bool) {
 	s.L.Lock()
 	if s.iterating {
 		s.Wait()
@@ -141,13 +128,13 @@ func (s *lockedMap[M]) Pop() (M, bool) {
 	return s.set.Pop()
 }
 
-func (s *lockedMap[M]) String() string {
+func (s *Locked[M]) String() string {
 	s.RLock()
 	defer s.RUnlock()
 	return "Locked" + s.set.String()
 }
 
-func (s *lockedMap[M]) MarshalJSON() ([]byte, error) {
+func (s *Locked[M]) MarshalJSON() ([]byte, error) {
 	s.RLock()
 	defer s.RUnlock()
 
@@ -163,13 +150,20 @@ func (s *lockedMap[M]) MarshalJSON() ([]byte, error) {
 	return d, nil
 }
 
-func (s *lockedMap[M]) UnmarshalJSON(d []byte) error {
-	s.L.Lock()
+// UnmarshalJSON implements json.Unmarshaler. It will unmarshal the JSON data into the set.
+func (s *Locked[M]) UnmarshalJSON(d []byte) error {
+	s.Lock()
+	if s.Cond == nil {
+		s.Cond = sync.NewCond(&s.RWMutex)
+	}
 	if s.iterating {
 		s.Wait()
 	}
-	defer s.L.Unlock()
+	defer s.Unlock()
 
+	if s.set == nil {
+		s.set = NewMap[M]()
+	}
 	um, ok := s.set.(json.Unmarshaler)
 	if !ok {
 		return fmt.Errorf("cannot unmarshal set of type %T - not json.Unmarshaler", s.set)
