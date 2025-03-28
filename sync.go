@@ -22,7 +22,7 @@ func NewSyncMap[M comparable]() *SyncMap[M] {
 	}
 }
 
-// NewSyncMapFrom returns a new Set[M] filled with the values from the sequence and is backed by a sync.Mao, making it safe
+// NewSyncMapFrom returns a new Set[M] filled with the values from the sequence and is backed by a sync.Map, making it safe
 // for concurrent use. Please read the documentation for [sync.Map] to understand the behavior of modifying the map.
 func NewSyncMapFrom[M comparable](seq iter.Seq[M]) *SyncMap[M] {
 	s := NewSyncMap[M]()
