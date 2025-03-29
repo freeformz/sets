@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.10.0
+
+* Rename `New{MapWith,MapFrom,}` to `New{With,From,}` for ergonomic reasons. Sorry about the thrash.
+* Since the types are exposed, started to add godocs for each of the methods for the exposed types.
+* Removed the sync.Cond on the locked types. NFI why I had it there as it's not needed.
+
 ## v0.9.1
 
 * Small staticcheck fixes

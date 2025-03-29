@@ -9,7 +9,7 @@ import (
 )
 
 func ExampleSet() {
-	ints := NewMap[int]()
+	ints := New[int]()
 	ints.Add(5)
 	ints.Add(1)
 	ints.Add(9)
@@ -150,7 +150,7 @@ func ExampleOrderedSet() {
 }
 
 func ExampleElements() {
-	ints := NewMapWith(5, 3, 2)
+	ints := NewWith(5, 3, 2)
 
 	// []T is returned
 	elements := Elements(ints)
@@ -164,7 +164,7 @@ func ExampleElements() {
 }
 
 func ExampleAppendSeq() {
-	ints := NewMapWith(5, 3)
+	ints := NewWith(5, 3)
 
 	// adds 2,4,1 to the set since 5 and 3 already exist
 	added := AppendSeq(ints, slices.Values([]int{5, 3, 2, 4, 1}))
@@ -173,7 +173,7 @@ func ExampleAppendSeq() {
 }
 
 func ExampleRemoveSeq() {
-	ints := NewMapWith(5, 3, 2)
+	ints := NewWith(5, 3, 2)
 
 	// removes 2 from the set since 5 and 3 exist
 	removed := RemoveSeq(ints, slices.Values([]int{2, 4, 1}))
@@ -182,8 +182,8 @@ func ExampleRemoveSeq() {
 }
 
 func ExampleUnion() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(3, 2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := Union(a, b)
 	out := make([]int, 0, c.Cardinality())
@@ -201,8 +201,8 @@ func ExampleUnion() {
 }
 
 func ExampleIntersection() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(3, 2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := Intersection(a, b)
 	out := make([]int, 0, c.Cardinality())
@@ -217,8 +217,8 @@ func ExampleIntersection() {
 }
 
 func ExampleDifference() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(3, 2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := Difference(a, b)
 	out := make([]int, 0, c.Cardinality())
@@ -233,8 +233,8 @@ func ExampleDifference() {
 }
 
 func ExampleSymmetricDifference() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(3, 2)
+	a := NewWith(5, 3)
+	b := NewWith(3, 2)
 
 	c := SymmetricDifference(a, b)
 	for i := range c.Iterator {
@@ -246,8 +246,8 @@ func ExampleSymmetricDifference() {
 }
 
 func ExampleSubset() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(5, 3, 2)
+	a := NewWith(5, 3)
+	b := NewWith(5, 3, 2)
 
 	if Subset(a, b) {
 		fmt.Println("a is a subset of b")
@@ -262,8 +262,8 @@ func ExampleSubset() {
 }
 
 func ExampleSuperset() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(5, 3, 2)
+	a := NewWith(5, 3)
+	b := NewWith(5, 3, 2)
 
 	if !Superset(a, b) {
 		fmt.Println("a is not a superset of b")
@@ -278,8 +278,8 @@ func ExampleSuperset() {
 }
 
 func ExampleEqual() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(5, 3)
+	a := NewWith(5, 3)
+	b := NewWith(5, 3)
 
 	if Equal(a, b) {
 		fmt.Println("a and b are equal")
@@ -303,7 +303,7 @@ func ExampleEqual() {
 }
 
 func ExampleContainsSeq() {
-	ints := NewMap[int]()
+	ints := New[int]()
 	if ContainsSeq(ints, slices.Values([]int{})) {
 		fmt.Println("Empty set contains empty sequence")
 	}
@@ -326,8 +326,8 @@ func ExampleContainsSeq() {
 }
 
 func ExampleDisjoint() {
-	a := NewMapWith(5, 3)
-	b := NewMapWith(2, 4)
+	a := NewWith(5, 3)
+	b := NewWith(2, 4)
 
 	if Disjoint(a, b) {
 		fmt.Println("a and b are disjoint")
@@ -368,7 +368,7 @@ func ExampleEqualOrdered() {
 }
 
 func ExampleMin() {
-	ints := NewMapWith(3, 2, 5)
+	ints := NewWith(3, 2, 5)
 
 	min := Min(ints)
 	fmt.Println(min)
@@ -376,7 +376,7 @@ func ExampleMin() {
 }
 
 func ExampleMax() {
-	ints := NewMapWith(3, 5, 2)
+	ints := NewWith(3, 5, 2)
 
 	max := Max(ints)
 	fmt.Println(max)
@@ -492,8 +492,8 @@ func Example_json() {
 	// OrderedSet[float32]([1 1.2 1.3 1.4 1.5])
 }
 
-func ExampleNewMapWith() {
-	set := NewMapWith("a", "b", "c", "b")
+func ExampleNewWith() {
+	set := NewWith("a", "b", "c", "b")
 	fmt.Println(set.Cardinality())
 
 	// Output: 3
@@ -543,8 +543,8 @@ func ExampleNewSyncMapWith() {
 	// Output: 3
 }
 
-func ExampleNewMap() {
-	set := NewMap[string]()
+func ExampleNew() {
+	set := New[string]()
 	set.Add("a")
 	set.Add("b")
 	set.Add("c")
@@ -614,9 +614,9 @@ func ExampleNewSyncMap() {
 	// Output: 3
 }
 
-func ExampleNewMapFrom() {
+func ExampleNewFrom() {
 	m := []string{"a", "b", "c", "b"}
-	set := NewMapFrom(slices.Values(m))
+	set := NewFrom(slices.Values(m))
 	fmt.Println(set.Cardinality())
 
 	// Output: 3
@@ -671,7 +671,7 @@ func ExampleNewSyncMapFrom() {
 }
 
 func ExampleNewLockedWrapping() {
-	set := NewMapWith("a", "b", "c", "b")
+	set := NewWith("a", "b", "c", "b")
 
 	wrapped := NewLockedWrapping(set)
 	// wrapped is safe for concurrent use
@@ -691,7 +691,7 @@ func ExampleNewLockedOrderedWrapping() {
 }
 
 func ExampleIsEmpty() {
-	set := NewMap[int]()
+	set := New[int]()
 	if IsEmpty(set) {
 		fmt.Println("set is empty")
 	}
@@ -706,7 +706,7 @@ func ExampleIsEmpty() {
 }
 
 func ExampleMapBy() {
-	set := NewMapWith(1, 2, 3)
+	set := NewWith(1, 2, 3)
 
 	mapped := MapBy(set, func(i int) int {
 		return i * 2
@@ -733,7 +733,7 @@ func ExampleMapBy() {
 func ExampleMapTo() {
 	set := NewOrderedWith(3, 1, 2)
 
-	dest := NewMap[string]()
+	dest := New[string]()
 	MapTo(set, dest, func(i int) string {
 		return fmt.Sprintf("%d=%d*2", i*2, i)
 	})
@@ -747,7 +747,7 @@ func ExampleMapTo() {
 }
 
 func ExampleMapToSlice() {
-	set := NewMapWith(3, 1, 2)
+	set := NewWith(3, 1, 2)
 
 	mapped := MapToSlice(set, func(i int) string {
 		return fmt.Sprintf("%d=%d*2", i*2, i)
@@ -762,7 +762,7 @@ func ExampleMapToSlice() {
 }
 
 func ExampleFilter() {
-	set := NewMapWith(3, 0, 1, 2, 4)
+	set := NewWith(3, 0, 1, 2, 4)
 
 	filtered := Filter(set, func(i int) bool {
 		return i > 2
@@ -776,7 +776,7 @@ func ExampleFilter() {
 }
 
 func ExampleReduce() {
-	set := NewMapWith(3, 1, 2)
+	set := NewWith(3, 1, 2)
 
 	sum := Reduce(set, 0, func(agg, v int) int {
 		return agg + v
@@ -801,7 +801,7 @@ func ExampleReduceRight() {
 }
 
 func ExampleForEach() {
-	set := NewMapWith(3, 1, 2)
+	set := NewWith(3, 1, 2)
 
 	ForEach(set, func(i int) {
 		fmt.Println(i)

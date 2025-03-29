@@ -26,7 +26,7 @@ go get github.com/freeformz/sets
 * Multiple set implementations:
   * `New()` -> Map based set;
   * `NewLocked()` -> Map based that uses a lock to be concurrency safe;
-  * `NewSync()` -> sync.Map based (concurrency safe);
+  * `NewSyncMap()` -> sync.Map based (concurrency safe);
   * `NewOrdered()` -> ordered set (uses a map for indexes and a slice for order);
   * `NewLockedOrdered()` -> ordered set that is concurrency safe.
 * `set` package functions align with standard lib packages like `slices` and `maps`.

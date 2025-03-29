@@ -8,23 +8,22 @@ import (
 	"sync"
 )
 
+// Locked is a concurrency safe wrapper around a Set[M]. It uses a read-write lock to allow multiple readers to access
+// the set concurrently, but only one writer at a time. The set is not ordered and does not guarantee the order of
+// elements when iterating over them. It is safe for concurrent use.
 type Locked[M comparable] struct {
 	set Set[M]
 	sync.RWMutex
-	*sync.Cond
-	iterating bool
 }
 
 var _ Set[int] = new(Locked[int])
 
-// NewLocked returns an empty Set[M] that is safe for concurrent use.
+// NewLocked returns an empty *Locked[M] that is safe for concurrent use.
 func NewLocked[M comparable]() *Locked[M] {
-	l := &Locked[M]{set: NewMap[M]()}
-	l.Cond = sync.NewCond(&l.RWMutex)
-	return l
+	return &Locked[M]{set: New[M]()}
 }
 
-// NewLockedFrom returns a new Set[M] filled with the values from the sequence.
+// NewLockedFrom returns a new *Locked[M] filled with the values from the sequence.
 func NewLockedFrom[M comparable](seq iter.Seq[M]) *Locked[M] {
 	s := NewLocked[M]()
 	for x := range seq {
@@ -33,7 +32,7 @@ func NewLockedFrom[M comparable](seq iter.Seq[M]) *Locked[M] {
 	return s
 }
 
-// NewLockedWith the values provides. Duplicates are removed.
+// NewLockedWith returns a *Locked[M] with the values provided.
 func NewLockedWith[M comparable](m ...M) *Locked[M] {
 	return NewLockedFrom(slices.Values(m))
 }
@@ -41,7 +40,7 @@ func NewLockedWith[M comparable](m ...M) *Locked[M] {
 // NewLockedWrapping returns a Set[M]. If set is already a locked set, then it is just returned as is. If set isn't a locked set
 // then the returned set is wrapped so that it is safe for concurrent use.
 func NewLockedWrapping[M comparable](set Set[M]) Set[M] {
-	if _, ok := set.(locker); ok {
+	if _, ok := set.(Locker); ok {
 		return set
 	}
 
@@ -51,89 +50,82 @@ func NewLockedWrapping[M comparable](set Set[M]) Set[M] {
 	return lset
 }
 
+// Contains returns true if the set contains the element.
 func (s *Locked[M]) Contains(m M) bool {
-	s.RWMutex.RLock()
-	defer s.RWMutex.RUnlock()
+	s.RLock()
+	defer s.RUnlock()
 	return s.set.Contains(m)
 }
 
+// Clear the set and returns the number of elements removed.
 func (s *Locked[M]) Clear() int {
-	s.Cond.L.Lock()
-	if s.iterating {
-		s.Cond.Wait()
-	}
-	defer s.Cond.L.Unlock()
+	s.Lock()
+	defer s.Unlock()
 	return s.set.Clear()
 }
 
+// Add an element to the set. Returns true if the element was added, false if it was already present.
 func (s *Locked[M]) Add(m M) bool {
-	s.Cond.L.Lock()
-	if s.iterating {
-		s.Cond.Wait()
-	}
-	defer s.Cond.L.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	return s.set.Add(m)
 }
 
+// Remove an element from the set. Returns true if the element was removed, false if it was not present.
 func (s *Locked[M]) Remove(m M) bool {
-	s.Cond.L.Lock()
-	if s.iterating {
-		s.Cond.Wait()
-	}
-	defer s.Cond.L.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	return s.set.Remove(m)
 }
 
+// Cardinality returns the number of elements in the set.
 func (s *Locked[M]) Cardinality() int {
-	if s == nil {
-		return 0
-	}
-	s.RWMutex.RLock()
-	defer s.RWMutex.RUnlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	return s.set.Cardinality()
 }
 
-// Iterator yields all elements in the set. It holds a lock for the duration of iteration. Calling methods other than
-// `Contains` and `Cardinality` will block until the iteration is complete.
+// Iterator yields all elements in the set. It holds a read lock for the duration of iteration. Calling any method that
+// modifies the set while iteration is happening will block until the iteration is complete.
 func (s *Locked[M]) Iterator(yield func(M) bool) {
-	s.Cond.L.Lock()
-	s.iterating = true
-	defer func() {
-		s.iterating = false
-		s.Cond.Broadcast()
-		s.Cond.L.Unlock()
-	}()
+	s.RLock()
+	defer s.RUnlock()
 
 	s.set.Iterator(yield)
 }
 
+// Clone returns a new set of the same underlying type.
 func (s *Locked[M]) Clone() Set[M] {
+	s.RLock()
+	defer s.RUnlock()
 	return NewLockedFrom(s.Iterator)
 }
 
+// NewEmpty returns a new empty set of the same underlying type.
 func (s *Locked[M]) NewEmpty() Set[M] {
 	return NewLocked[M]()
 }
 
+// Pop removes and returns an element from the set. If the set is empty, it returns the zero value of M and false.
 func (s *Locked[M]) Pop() (M, bool) {
-	s.L.Lock()
-	if s.iterating {
-		s.Wait()
-	}
-	defer s.L.Unlock()
+	s.Lock()
+	defer s.Unlock()
 
 	return s.set.Pop()
 }
 
+// String returns a string representation of the set. It returns a string of the form LockedSet[T](<elements>).
 func (s *Locked[M]) String() string {
 	s.RLock()
 	defer s.RUnlock()
 	return "Locked" + s.set.String()
 }
 
+// MarshalJSON implements json.Marshaler. It will marshal the set into a JSON array of the elements in the set. If the
+// set is empty an empty JSON array is returned.
 func (s *Locked[M]) MarshalJSON() ([]byte, error) {
 	s.RLock()
 	defer s.RUnlock()
@@ -150,19 +142,14 @@ func (s *Locked[M]) MarshalJSON() ([]byte, error) {
 	return d, nil
 }
 
-// UnmarshalJSON implements json.Unmarshaler. It will unmarshal the JSON data into the set.
+// UnmarshalJSON implements json.Unmarshaler. It expects a JSON array of the elements in the set. If the set is empty,
+// it returns an empty set. If the JSON is invalid, it returns an error.
 func (s *Locked[M]) UnmarshalJSON(d []byte) error {
 	s.Lock()
-	if s.Cond == nil {
-		s.Cond = sync.NewCond(&s.RWMutex)
-	}
-	if s.iterating {
-		s.Wait()
-	}
 	defer s.Unlock()
 
 	if s.set == nil {
-		s.set = NewMap[M]()
+		s.set = New[M]()
 	}
 	um, ok := s.set.(json.Unmarshaler)
 	if !ok {
