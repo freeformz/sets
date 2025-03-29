@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.10.1
+
+* Retract v0.9.{0,1} as the API change was reverted in v0.10.0
+
 ## v0.10.0
 
 * Rename `New{MapWith,MapFrom,}` to `New{With,From,}` for ergonomic reasons. Sorry about the thrash.
