@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// SyncMap is a concurrency safe set type that uses a sync.Map.
 type SyncMap[M comparable] struct {
 	m sync.Map
 }

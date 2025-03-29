@@ -28,7 +28,7 @@ func TestMap(t *testing.T) {
 	t.Parallel()
 
 	setStateMachine := &SetStateMachine{
-		set:    NewMap[int](),
+		set:    New[int](),
 		stateI: make(map[int]int),
 	}
 	rapid.Check(t, func(t *rapid.T) {
@@ -433,7 +433,7 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 			finished.Done()
 		},
 		func(base int) {
-			other := NewMap[int]()
+			other := New[int]()
 			for i := range (base + 1) * 100 {
 				other.Add(i)
 			}
@@ -577,7 +577,7 @@ func TestChunk_Ordered(t *testing.T) {
 
 func TestChunk(t *testing.T) {
 	t.Parallel()
-	s := NewMap[int]()
+	s := New[int]()
 	for i := range 22 {
 		s.Add(i)
 	}
@@ -694,7 +694,7 @@ func TestLocked_JSON(t *testing.T) {
 
 func TestMap_JSON(t *testing.T) {
 	t.Parallel()
-	set := NewMap[Foo]()
+	set := New[Foo]()
 	set.Add(&foo{})
 	set.Add(&bar{})
 	d, err := json.Marshal(set)
@@ -707,7 +707,7 @@ func TestMap_JSON(t *testing.T) {
 		t.Fatalf("expected error: %v", err)
 	}
 
-	set2 := NewMap[foo]()
+	set2 := New[foo]()
 	set2.Add(foo{Baz: "bar"})
 	set2.Add(foo{Baz: "foo"})
 
@@ -720,7 +720,7 @@ func TestMap_JSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	set3 := NewMap[*foo]()
+	set3 := New[*foo]()
 	set3.Add(&foo{Baz: "bar"})
 	set3.Add(&foo{Baz: "foo"})
 	d, err = json.Marshal(set3)
@@ -732,7 +732,7 @@ func TestMap_JSON(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	set4 := NewMap[chan foo]()
+	set4 := New[chan foo]()
 	set4.Add(make(chan foo))
 	set4.Add(make(chan foo))
 	// see comparison rules for channels
@@ -749,7 +749,7 @@ func TestMap_JSON(t *testing.T) {
 		Set *Map[int]
 	}
 
-	b := Bar{Set: NewMap[int]()}
+	b := Bar{Set: New[int]()}
 	b.Set.Add(1)
 	b.Set.Add(2)
 

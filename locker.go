@@ -1,10 +1,9 @@
 package sets
 
-type locker interface {
+// Locker interface used to determine if a locked implementation is being used.
+type Locker interface {
 	Lock()
 	Unlock()
 	RLock()
 	RUnlock()
-	Wait()
-	Broadcast()
 }
