@@ -146,7 +146,7 @@ func (s *Map[M]) UnmarshalJSON(d []byte) error {
 
 // scanValue is a helper function that implements the common logic for scanning values into sets.
 // It handles nil, []byte, and string types, delegating to the provided unmarshal function.
-func scanValue[M comparable](src any, clear func(), unmarshal func([]byte) error) error {
+func scanValue[M comparable](src any, clear func() int, unmarshal func([]byte) error) error {
 	switch st := src.(type) {
 	case nil:
 		clear()
@@ -164,5 +164,5 @@ func scanValue[M comparable](src any, clear func(), unmarshal func([]byte) error
 // of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
 // returned.
 func (s *Map[M]) Scan(src any) error {
-	return scanValue[M](src, func() { s.Clear() }, s.UnmarshalJSON)
+	return scanValue[M](src, s.Clear, s.UnmarshalJSON)
 }

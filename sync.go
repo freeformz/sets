@@ -141,5 +141,5 @@ func (s *SyncMap[M]) UnmarshalJSON(d []byte) error {
 // of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
 // returned.
 func (s *SyncMap[M]) Scan(src any) error {
-	return scanValue[M](src, func() { s.Clear() }, s.UnmarshalJSON)
+	return scanValue[M](src, s.Clear, s.UnmarshalJSON)
 }

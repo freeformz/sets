@@ -221,7 +221,7 @@ func (s *LockedOrdered[M]) Scan(src any) error {
 		s.set = NewOrdered[M]()
 	}
 
-	return scanValue[M](src, func() { s.set.Clear() }, func(data []byte) error {
+	return scanValue[M](src, s.set.Clear, func(data []byte) error {
 		um, ok := s.set.(json.Unmarshaler)
 		if !ok {
 			return fmt.Errorf("cannot unmarshal set of type %T - not json.Unmarshaler", s.set)
