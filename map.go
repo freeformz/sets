@@ -45,6 +45,9 @@ func (s *Map[M]) Contains(m M) bool {
 
 // Clear the set and returns the number of elements removed.
 func (s *Map[M]) Clear() int {
+	if s.set == nil {
+		s.set = make(map[M]struct{})
+	}
 	n := len(s.set)
 	for k := range s.set {
 		delete(s.set, k)
@@ -134,12 +137,28 @@ func (s *Map[M]) UnmarshalJSON(d []byte) error {
 	}
 
 	s.Clear()
-	if s.set == nil {
-		s.set = make(map[M]struct{})
-	}
 	for _, m := range um {
 		s.Add(m)
 	}
 
 	return nil
+}
+
+// extract the body of Map's Scan method into an unexported method and have Scan use that. Then use that same method to implement Scan for the other Sets types. AI!
+
+// Scan implements the sql.Scanner interface. It scans the value from the database into the set. It expects a JSON array
+// of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
+// returned.
+func (s *Map[M]) Scan(src any) error {
+	switch st := src.(type) {
+	case nil:
+		s.Clear()
+		return nil
+	case []byte:
+		return s.UnmarshalJSON(st)
+	case string:
+		return s.UnmarshalJSON([]byte(st))
+	default:
+		return fmt.Errorf("cannot scan set of type %T - not []byte or string", st)
+	}
 }
