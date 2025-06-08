@@ -2,6 +2,7 @@ package sets
 
 import "testing"
 
+// create similar tests for the other Map types AI!
 func TestMapScan(t *testing.T) {
 	t.Parallel()
 
