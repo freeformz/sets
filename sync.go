@@ -136,3 +136,10 @@ func (s *SyncMap[M]) UnmarshalJSON(d []byte) error {
 	}
 	return nil
 }
+
+// Scan implements the sql.Scanner interface. It scans the value from the database into the set. It expects a JSON array
+// of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
+// returned.
+func (s *SyncMap[M]) Scan(src any) error {
+	return scanValue[M](src, func() { s.Clear() }, s.UnmarshalJSON)
+}

@@ -144,21 +144,25 @@ func (s *Map[M]) UnmarshalJSON(d []byte) error {
 	return nil
 }
 
-// extract the body of Map's Scan method into an unexported method and have Scan use that. Then use that same method to implement Scan for the other Sets types. AI!
+// scanValue is a helper function that implements the common logic for scanning values into sets.
+// It handles nil, []byte, and string types, delegating to the provided unmarshal function.
+func scanValue[M comparable](src any, clear func(), unmarshal func([]byte) error) error {
+	switch st := src.(type) {
+	case nil:
+		clear()
+		return nil
+	case []byte:
+		return unmarshal(st)
+	case string:
+		return unmarshal([]byte(st))
+	default:
+		return fmt.Errorf("cannot scan set of type %T - not []byte or string", st)
+	}
+}
 
 // Scan implements the sql.Scanner interface. It scans the value from the database into the set. It expects a JSON array
 // of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
 // returned.
 func (s *Map[M]) Scan(src any) error {
-	switch st := src.(type) {
-	case nil:
-		s.Clear()
-		return nil
-	case []byte:
-		return s.UnmarshalJSON(st)
-	case string:
-		return s.UnmarshalJSON([]byte(st))
-	default:
-		return fmt.Errorf("cannot scan set of type %T - not []byte or string", st)
-	}
+	return scanValue[M](src, func() { s.Clear() }, s.UnmarshalJSON)
 }
