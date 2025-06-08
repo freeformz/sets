@@ -45,6 +45,9 @@ func (s *Map[M]) Contains(m M) bool {
 
 // Clear the set and returns the number of elements removed.
 func (s *Map[M]) Clear() int {
+	if s.set == nil {
+		s.set = make(map[M]struct{})
+	}
 	n := len(s.set)
 	for k := range s.set {
 		delete(s.set, k)
@@ -134,12 +137,32 @@ func (s *Map[M]) UnmarshalJSON(d []byte) error {
 	}
 
 	s.Clear()
-	if s.set == nil {
-		s.set = make(map[M]struct{})
-	}
 	for _, m := range um {
 		s.Add(m)
 	}
 
 	return nil
+}
+
+// scanValue is a helper function that implements the common logic for scanning values into sets.
+// It handles nil, []byte, and string types, delegating to the provided unmarshal function.
+func scanValue[M comparable](src any, clear func() int, unmarshal func([]byte) error) error {
+	switch st := src.(type) {
+	case nil:
+		clear()
+		return nil
+	case []byte:
+		return unmarshal(st)
+	case string:
+		return unmarshal([]byte(st))
+	default:
+		return fmt.Errorf("cannot scan set of type %T - not []byte or string", st)
+	}
+}
+
+// Scan implements the sql.Scanner interface. It scans the value from the database into the set. It expects a JSON array
+// of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
+// returned.
+func (s *Map[M]) Scan(src any) error {
+	return scanValue[M](src, s.Clear, s.UnmarshalJSON)
 }

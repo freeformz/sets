@@ -29,7 +29,7 @@ go get github.com/freeformz/sets
   * `NewSyncMap()` -> sync.Map based (concurrency safe);
   * `NewOrdered()` -> ordered set (uses a map for indexes and a slice for order);
   * `NewLockedOrdered()` -> ordered set that is concurrency safe.
-* `set` package functions align with standard lib packages like `slices` and `maps`.
+* `sets` package functions align with standard lib packages like `slices` and `maps`.
 * Implement as much as possible as package functions, not Set methods.
 * Exhaustive unit tests via [rapid](https://github.com/flyingmutant/rapid).
 * Somewhat exhaustive examples.

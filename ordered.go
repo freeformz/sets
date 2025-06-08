@@ -47,10 +47,18 @@ func (s *Ordered[M]) Contains(m M) bool {
 // Clear the set and returns the number of elements removed.
 func (s *Ordered[M]) Clear() int {
 	n := len(s.values)
-	for k := range s.idx {
-		delete(s.idx, k)
+	if s.idx == nil {
+		s.idx = make(map[M]int)
+	} else {
+		for k := range s.idx {
+			delete(s.idx, k)
+		}
 	}
-	s.values = s.values[:0]
+	if s.values == nil {
+		s.values = make([]M, 0)
+	} else {
+		s.values = s.values[:0]
+	}
 	return n
 }
 
@@ -188,20 +196,23 @@ func (s *Ordered[M]) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements json.Unmarshaler. It expects a JSON array of the elements in the set. If the set is empty,
 // it returns an empty set. If the JSON is invalid, it returns an error.
 func (s *Ordered[M]) UnmarshalJSON(d []byte) error {
-	s.Clear()
-	if s.values == nil {
-		s.values = make([]M, 0)
-	}
-	if err := json.Unmarshal(d, &s.values); err != nil {
+	t := make([]M, 0)
+	if err := json.Unmarshal(d, &t); err != nil {
 		return fmt.Errorf("unmarshaling ordered set: %w", err)
 	}
 
-	if s.idx == nil {
-		s.idx = make(map[M]int)
-	}
+	s.Clear()
+	s.values = t
 	for i, v := range s.values {
 		s.idx[v] = i
 	}
 
 	return nil
+}
+
+// Scan implements the sql.Scanner interface. It scans the value from the database into the set. It expects a JSON array
+// of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
+// returned.
+func (s *Ordered[M]) Scan(src any) error {
+	return scanValue[M](src, s.Clear, s.UnmarshalJSON)
 }

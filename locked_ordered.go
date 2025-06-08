@@ -209,3 +209,23 @@ func (s *LockedOrdered[M]) UnmarshalJSON(d []byte) error {
 	}
 	return nil
 }
+
+// Scan implements the sql.Scanner interface. It scans the value from the database into the set. It expects a JSON array
+// of the elements in the set. If the JSON is invalid an error is returned. If the value is nil an empty set is
+// returned.
+func (s *LockedOrdered[M]) Scan(src any) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.set == nil {
+		s.set = NewOrdered[M]()
+	}
+
+	return scanValue[M](src, s.set.Clear, func(data []byte) error {
+		um, ok := s.set.(json.Unmarshaler)
+		if !ok {
+			return fmt.Errorf("cannot unmarshal set of type %T - not json.Unmarshaler", s.set)
+		}
+		return um.UnmarshalJSON(data)
+	})
+}
