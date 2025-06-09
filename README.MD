@@ -78,6 +78,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Filter(aSet, func(v V) bool { return true/false }) bSet` : Filters the elements of the set and returns a new set.
 * `sets.Reduce(aSet, X, func(X, K) X { return ... }) X` : Reduces the set to a single value.
 * `sets.ForEach(aSet, func(v V))` : calls the provided function with each set member.
+* `sets.FilterTo(aSet, bSet, func(v V) bool { return true/false })` : Filters the elements of aSet and adds matching elements to bSet.
 
 ## OrderedSet Helpers
 
