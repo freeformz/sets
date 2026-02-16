@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -17,6 +18,7 @@ type Locked[M comparable] struct {
 }
 
 var _ Set[int] = new(Locked[int])
+var _ driver.Valuer = new(Locked[int])
 
 // NewLocked returns an empty *Locked[M] that is safe for concurrent use.
 func NewLocked[M comparable]() *Locked[M] {
@@ -122,6 +124,11 @@ func (s *Locked[M]) String() string {
 	s.RLock()
 	defer s.RUnlock()
 	return "Locked" + s.set.String()
+}
+
+// Value implements the driver.Valuer interface. It returns the JSON representation of the set.
+func (s *Locked[M]) Value() (driver.Value, error) {
+	return s.MarshalJSON()
 }
 
 // MarshalJSON implements json.Marshaler. It will marshal the set into a JSON array of the elements in the set. If the

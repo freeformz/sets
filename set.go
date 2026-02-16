@@ -7,6 +7,7 @@ package sets
 import (
 	"cmp"
 	"iter"
+	"math/rand/v2"
 	"slices"
 )
 
@@ -310,4 +311,67 @@ func ForEach[K comparable](s Set[K], f func(K)) {
 	for k := range s.Iterator {
 		f(k)
 	}
+}
+
+// Any returns true if any element in the set satisfies the predicate. Returns false for an empty set.
+func Any[K comparable](s Set[K], f func(K) bool) bool {
+	for k := range s.Iterator {
+		if f(k) {
+			return true
+		}
+	}
+	return false
+}
+
+// All returns true if all elements in the set satisfy the predicate. Returns true for an empty set (vacuous truth).
+func All[K comparable](s Set[K], f func(K) bool) bool {
+	for k := range s.Iterator {
+		if !f(k) {
+			return false
+		}
+	}
+	return true
+}
+
+// ContainsAll returns true if the set contains all of the provided elements. Returns true if no elements are provided (vacuous truth).
+func ContainsAll[K comparable](s Set[K], elements ...K) bool {
+	for _, k := range elements {
+		if !s.Contains(k) {
+			return false
+		}
+	}
+	return true
+}
+
+// ContainsAny returns true if the set contains at least one of the provided elements. Returns false if no elements are provided.
+func ContainsAny[K comparable](s Set[K], elements ...K) bool {
+	for _, k := range elements {
+		if s.Contains(k) {
+			return true
+		}
+	}
+	return false
+}
+
+// Random returns a random element from the set without removing it. The second return value is false if the set is empty.
+// For ordered sets, this is O(1) via indexed access. For unordered sets, this is O(n) via iteration.
+func Random[K comparable](s Set[K]) (K, bool) {
+	n := s.Cardinality()
+	if n == 0 {
+		var zero K
+		return zero, false
+	}
+	if idx, ok := s.(interface{ At(int) (K, bool) }); ok {
+		return idx.At(rand.IntN(n))
+	}
+	skip := rand.IntN(n)
+	i := 0
+	for k := range s.Iterator {
+		if i == skip {
+			return k, true
+		}
+		i++
+	}
+	var zero K
+	return zero, false
 }

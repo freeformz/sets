@@ -823,3 +823,115 @@ func ExampleForEachRight() {
 	// 1
 	// 3
 }
+
+func ExampleAny() {
+	set := NewWith(1, 2, 3, 4, 5)
+
+	if Any(set, func(i int) bool { return i > 3 }) {
+		fmt.Println("set has element > 3")
+	}
+
+	if !Any(set, func(i int) bool { return i > 10 }) {
+		fmt.Println("set has no element > 10")
+	}
+	// Output:
+	// set has element > 3
+	// set has no element > 10
+}
+
+func ExampleAll() {
+	set := NewWith(2, 4, 6)
+
+	if All(set, func(i int) bool { return i%2 == 0 }) {
+		fmt.Println("all elements are even")
+	}
+
+	set.Add(3)
+	if !All(set, func(i int) bool { return i%2 == 0 }) {
+		fmt.Println("not all elements are even")
+	}
+	// Output:
+	// all elements are even
+	// not all elements are even
+}
+
+func ExampleContainsAll() {
+	set := NewWith(1, 2, 3, 4, 5)
+
+	if ContainsAll(set, 1, 3, 5) {
+		fmt.Println("set contains 1, 3, and 5")
+	}
+
+	if !ContainsAll(set, 1, 6) {
+		fmt.Println("set does not contain both 1 and 6")
+	}
+	// Output:
+	// set contains 1, 3, and 5
+	// set does not contain both 1 and 6
+}
+
+func ExampleContainsAny() {
+	set := NewWith(1, 2, 3)
+
+	if ContainsAny(set, 3, 4, 5) {
+		fmt.Println("set contains at least one of 3, 4, 5")
+	}
+
+	if !ContainsAny(set, 6, 7, 8) {
+		fmt.Println("set contains none of 6, 7, 8")
+	}
+	// Output:
+	// set contains at least one of 3, 4, 5
+	// set contains none of 6, 7, 8
+}
+
+func ExampleRandom() {
+	set := NewWith(42)
+
+	// with a single element, Random always returns that element
+	v, ok := Random(set)
+	if ok {
+		fmt.Println(v)
+	}
+
+	empty := New[int]()
+	_, ok = Random(empty)
+	if !ok {
+		fmt.Println("empty set")
+	}
+	// Output:
+	// 42
+	// empty set
+}
+
+func ExampleFirst() {
+	set := NewOrderedWith(5, 3, 1)
+
+	if v, ok := First(set); ok {
+		fmt.Println(v)
+	}
+
+	empty := NewOrdered[int]()
+	if _, ok := First(empty); !ok {
+		fmt.Println("empty set")
+	}
+	// Output:
+	// 5
+	// empty set
+}
+
+func ExampleLast() {
+	set := NewOrderedWith(5, 3, 1)
+
+	if v, ok := Last(set); ok {
+		fmt.Println(v)
+	}
+
+	empty := NewOrdered[int]()
+	if _, ok := Last(empty); !ok {
+		fmt.Println("empty set")
+	}
+	// Output:
+	// 1
+	// empty set
+}
