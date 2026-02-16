@@ -1,8 +1,8 @@
 module github.com/freeformz/sets
 
-go 1.23
+go 1.25
 
-toolchain go1.24.1
+toolchain go1.26.0
 
 retract (
     // breaking change that was reverted in 0.10.0
