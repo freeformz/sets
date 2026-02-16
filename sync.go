@@ -67,7 +67,7 @@ func (s *SyncMap[M]) Pop() (M, bool) {
 	var m M
 	var ok bool
 
-	s.m.Range(func(key, _ interface{}) bool {
+	s.m.Range(func(key, _ any) bool {
 		if _, ok = s.m.LoadAndDelete(key); ok {
 			m = key.(M)
 			ok = true
@@ -88,7 +88,7 @@ func (s *SyncMap[M]) Cardinality() int {
 		return 0
 	}
 	var n int
-	s.m.Range(func(_, _ interface{}) bool {
+	s.m.Range(func(_, _ any) bool {
 		n++
 		return true
 	})
@@ -98,7 +98,7 @@ func (s *SyncMap[M]) Cardinality() int {
 // Iterator yields all elements in the set. It is safe to call concurrently with other methods, but the order and
 // behavior is undefined, as per [sync.Map]'s `Range`.
 func (s *SyncMap[M]) Iterator(yield func(M) bool) {
-	s.m.Range(func(key, _ interface{}) bool {
+	s.m.Range(func(key, _ any) bool {
 		return yield(key.(M))
 	})
 }
