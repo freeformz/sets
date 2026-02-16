@@ -14,8 +14,10 @@ type SyncMap[M comparable] struct {
 	m sync.Map
 }
 
-var _ Set[int] = new(SyncMap[int])
-var _ driver.Valuer = new(SyncMap[int])
+var (
+	_ Set[int]      = new(SyncMap[int])
+	_ driver.Valuer = new(SyncMap[int])
+)
 
 // NewSyncMap returns an empty Set[M] that is backed by a sync.Map, making it safe for concurrent use.
 // Please read the documentation for [sync.Map] to understand the behavior of modifying the map.
@@ -48,11 +50,11 @@ func (s *SyncMap[M]) Contains(m M) bool {
 
 func (s *SyncMap[M]) Clear() int {
 	var n int
-	s.m.Range(func(_, _ interface{}) bool {
+	s.m.Range(func(k, _ any) bool {
+		s.m.Delete(k)
 		n++
 		return true
 	})
-	s.m.Clear()
 	return n
 }
 

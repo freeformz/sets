@@ -1084,3 +1084,33 @@ func TestFirst_Last_LockedOrdered(t *testing.T) {
 		t.Fatalf("expected Last on empty set to return false")
 	}
 }
+
+func TestIter2ReusedIteratorResetsIndex(t *testing.T) {
+	t.Parallel()
+
+	s := New[int]()
+	s.Add(1)
+	s.Add(2)
+	s.Add(3)
+
+	iter2 := Iter2(s.Iterator)
+
+	// First iteration: collect all indices
+	var firstIndices []int
+	for i := range iter2 {
+		firstIndices = append(firstIndices, i)
+	}
+
+	// Second iteration: indices should start at 0 again
+	var secondIndices []int
+	for i := range iter2 {
+		secondIndices = append(secondIndices, i)
+	}
+
+	slices.Sort(firstIndices)
+	slices.Sort(secondIndices)
+
+	if diff := cmp.Diff(firstIndices, secondIndices); diff != "" {
+		t.Errorf("Iter2 indices differ on second invocation (-first +second):\n%s", diff)
+	}
+}

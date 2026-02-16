@@ -209,9 +209,8 @@ func (s *Ordered[M]) UnmarshalJSON(d []byte) error {
 	}
 
 	s.Clear()
-	s.values = t
-	for i, v := range s.values {
-		s.idx[v] = i
+	for _, v := range t {
+		s.Add(v)
 	}
 
 	return nil
