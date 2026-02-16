@@ -521,7 +521,6 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 			for i := range (base + 1) * 100 {
 				set.Add(i)
 			}
-			finished.Done()
 		},
 		func(base int) {
 			var x int
@@ -531,7 +530,6 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 				x = set.Cardinality()
 			}
 			_ = x
-			finished.Done()
 		},
 		func(base int) {
 			var x bool
@@ -541,7 +539,6 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 				x = set.Contains(i)
 			}
 			_ = x
-			finished.Done()
 		},
 		func(base int) {
 			started <- struct{}{}
@@ -549,7 +546,6 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 			for i := range (base + 1) * 100 {
 				set.Remove(i)
 			}
-			finished.Done()
 		},
 		func(base int) {
 			other := New[int]()
@@ -560,7 +556,6 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 			<-start
 			AppendSeq(other, set.Iterator)
 			RemoveSeq(set, other.Iterator)
-			finished.Done()
 		},
 		func(base int) {
 			var x int
@@ -572,14 +567,14 @@ func testSetConcurrency(t *testing.T, set Set[int]) {
 				}
 			}
 			_ = x
-			finished.Done()
 		},
 	}
 	count := 20
 	for i := range count {
-		finished.Add(len(goroutines))
 		for j := range len(goroutines) {
-			go goroutines[j](i)
+			finished.Go(func() {
+				goroutines[j](i)
+			})
 		}
 	}
 
