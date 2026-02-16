@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -15,6 +16,7 @@ type Map[M comparable] struct {
 }
 
 var _ Set[int] = new(Map[int])
+var _ driver.Valuer = new(Map[int])
 
 // New returns an empty *Map[M] instance.
 func New[M comparable]() *Map[M] {
@@ -142,6 +144,11 @@ func (s *Map[M]) UnmarshalJSON(d []byte) error {
 	}
 
 	return nil
+}
+
+// Value implements the driver.Valuer interface. It returns the JSON representation of the set.
+func (s *Map[M]) Value() (driver.Value, error) {
+	return s.MarshalJSON()
 }
 
 // scanValue is a helper function that implements the common logic for scanning values into sets.

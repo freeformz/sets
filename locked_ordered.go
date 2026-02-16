@@ -2,6 +2,7 @@ package sets
 
 import (
 	"cmp"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -16,6 +17,7 @@ type LockedOrdered[M cmp.Ordered] struct {
 }
 
 var _ Set[int] = new(LockedOrdered[int])
+var _ driver.Valuer = new(LockedOrdered[int])
 
 // NewLockedOrdered returns an empty *LockedOrdered[M] instance that is safe for concurrent use.
 func NewLockedOrdered[M cmp.Ordered]() *LockedOrdered[M] {
@@ -168,6 +170,11 @@ func (s *LockedOrdered[M]) String() string {
 	defer s.RUnlock()
 
 	return "Locked" + s.set.String()
+}
+
+// Value implements the driver.Valuer interface. It returns the JSON representation of the set.
+func (s *LockedOrdered[M]) Value() (driver.Value, error) {
+	return s.MarshalJSON()
 }
 
 // MarshalJSON implements json.Marshaler. It will marshal the set to JSON. It returns a JSON array of the elements in

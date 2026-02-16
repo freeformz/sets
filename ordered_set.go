@@ -98,3 +98,13 @@ func ForEachRight[K cmp.Ordered](s OrderedSet[K], fn func(k K)) {
 		fn(k)
 	}
 }
+
+// First returns the first element of the ordered set. If the set is empty, the second return value is false.
+func First[K cmp.Ordered](s OrderedSet[K]) (K, bool) {
+	return s.At(0)
+}
+
+// Last returns the last element of the ordered set. If the set is empty, the second return value is false.
+func Last[K cmp.Ordered](s OrderedSet[K]) (K, bool) {
+	return s.At(s.Cardinality() - 1)
+}

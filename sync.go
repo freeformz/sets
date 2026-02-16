@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -14,6 +15,7 @@ type SyncMap[M comparable] struct {
 }
 
 var _ Set[int] = new(SyncMap[int])
+var _ driver.Valuer = new(SyncMap[int])
 
 // NewSyncMap returns an empty Set[M] that is backed by a sync.Map, making it safe for concurrent use.
 // Please read the documentation for [sync.Map] to understand the behavior of modifying the map.
@@ -123,6 +125,11 @@ func (s *SyncMap[M]) MarshalJSON() ([]byte, error) {
 		return d, fmt.Errorf("marshaling sync set: %w", err)
 	}
 	return d, nil
+}
+
+// Value implements the driver.Valuer interface. It returns the JSON representation of the set.
+func (s *SyncMap[M]) Value() (driver.Value, error) {
+	return s.MarshalJSON()
 }
 
 func (s *SyncMap[M]) UnmarshalJSON(d []byte) error {

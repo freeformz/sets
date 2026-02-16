@@ -2,6 +2,7 @@ package sets
 
 import (
 	"cmp"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"iter"
@@ -15,6 +16,7 @@ type Ordered[M cmp.Ordered] struct {
 }
 
 var _ OrderedSet[int] = new(Ordered[int])
+var _ driver.Valuer = new(Ordered[int])
 
 // NewOrdered returns an empty *Ordered[M].
 func NewOrdered[M cmp.Ordered]() *Ordered[M] {
@@ -177,6 +179,11 @@ func (s *Ordered[M]) Index(m M) int {
 func (s *Ordered[M]) String() string {
 	var m M
 	return fmt.Sprintf("OrderedSet[%T](%v)", m, s.values)
+}
+
+// Value implements the driver.Valuer interface. It returns the JSON representation of the set.
+func (s *Ordered[M]) Value() (driver.Value, error) {
+	return s.MarshalJSON()
 }
 
 // MarshalJSON implements json.Marshaler. It will marshal the set into a JSON array of the elements in the set. If the

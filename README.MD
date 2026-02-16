@@ -51,6 +51,10 @@ OrderedSets preserve order when {un,}marshaling, while Sets do not.
 
 Sets of types that don't have a JSON equivalent can't be marshaled to and/or from JSON w/o an error. For instance a Set of an interface type can marshal to json, but can't then un-marshal back to Go w/o an error.
 
+## SQL
+
+All set types implement `sql.Scanner` and `driver.Valuer`, allowing them to be used directly with `database/sql`. Values are stored as JSON arrays.
+
 ## Set Helpers
 
 These helpers work on all Set types, including OrderedSets.
@@ -79,6 +83,11 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Reduce(aSet, X, func(X, K) X { return ... }) X` : Reduces the set to a single value.
 * `sets.ForEach(aSet, func(v V))` : calls the provided function with each set member.
 * `sets.FilterTo(aSet, bSet, func(v V) bool { return true/false })` : Filters the elements of aSet and adds matching elements to bSet.
+* `sets.Any(aSet, func(v V) bool { return true/false })` : Returns true if any element in the set satisfies the predicate. Short-circuits on the first match.
+* `sets.All(aSet, func(v V) bool { return true/false })` : Returns true if all elements in the set satisfy the predicate. Short-circuits on the first non-match.
+* `sets.ContainsAll(aSet, elements...)` : Returns true if the set contains all of the provided elements.
+* `sets.ContainsAny(aSet, elements...)` : Returns true if the set contains at least one of the provided elements.
+* `sets.Random(aSet)` : Returns a random element from the set without removing it. O(1) for ordered sets, O(n) for unordered sets.
 
 ## OrderedSet Helpers
 
@@ -90,6 +99,8 @@ These helpers work on all OrderedSet types.
 * `sets.Sorted(aOrderedSet)` : Return a copy of aOrderedSet with the elements sorted in ascending order. Does not modify the original set.
 * `sets.ReduceRight(aSet, X, func(X, K) X { return ... }) X` : Reduces the set to a single value in reverse order.
 * `sets.ForEachRight(aSet, func(K) { ... })` : calls the provided function with each set member in reverse order.
+* `sets.First(aOrderedSet)` : Returns the first element of the ordered set, or (zero, false) if empty.
+* `sets.Last(aOrderedSet)` : Returns the last element of the ordered set, or (zero, false) if empty.
 
 ## Custom Set Types
 

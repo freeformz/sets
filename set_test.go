@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"maps"
 	"slices"
@@ -385,6 +386,124 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 
 	if diff := cmp.Diff(slices.Collect(maps.Keys(sm.stateI)), Elements(sm.set), sortInts()); diff != "" {
 		t.Fatalf("unexpected elements (-want +got):\n%s", diff)
+	}
+}
+
+func (sm *SetStateMachine) Any(t *rapid.T) {
+	threshold := rapid.Int().Draw(t, "Threshold")
+	expected := false
+	for k := range sm.stateI {
+		if k > threshold {
+			expected = true
+			break
+		}
+	}
+	got := Any(sm.set, func(k int) bool { return k > threshold })
+	if got != expected {
+		t.Fatalf("Any(> %d): expected %v, got %v", threshold, expected, got)
+	}
+}
+
+func (sm *SetStateMachine) All(t *rapid.T) {
+	threshold := rapid.Int().Draw(t, "Threshold")
+	expected := true
+	for k := range sm.stateI {
+		if k <= threshold {
+			expected = false
+			break
+		}
+	}
+	got := All(sm.set, func(k int) bool { return k > threshold })
+	if got != expected {
+		t.Fatalf("All(> %d): expected %v, got %v", threshold, expected, got)
+	}
+}
+
+func (sm *SetStateMachine) ContainsAllAction(t *rapid.T) {
+	if len(sm.stateI) == 0 {
+		// test empty elements on empty set
+		if !ContainsAll(sm.set) {
+			t.Fatalf("ContainsAll with no args should return true")
+		}
+		return
+	}
+	// elements that are in the set
+	values := rapid.SliceOfNDistinct(rapid.SampledFrom(slices.Collect(sm.set.Iterator)), 1, len(sm.stateI), func(i int) int { return i }).Draw(t, "ContainsAll Values")
+	if !ContainsAll(sm.set, values...) {
+		t.Fatalf("expected ContainsAll to be true for %v", values)
+	}
+	// add an element not in the set
+	extra := rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value")
+	values = append(values, extra)
+	if ContainsAll(sm.set, values...) {
+		t.Fatalf("expected ContainsAll to be false for %v", values)
+	}
+}
+
+func (sm *SetStateMachine) ContainsAnyAction(t *rapid.T) {
+	if len(sm.stateI) == 0 {
+		if ContainsAny(sm.set) {
+			t.Fatalf("ContainsAny with no args should return false")
+		}
+		return
+	}
+	// at least one element in the set
+	elem := rapid.SampledFrom(slices.Collect(sm.set.Iterator)).Draw(t, "ContainsAny Value")
+	extra := rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value")
+	if !ContainsAny(sm.set, elem, extra) {
+		t.Fatalf("expected ContainsAny to be true for %v", []int{elem, extra})
+	}
+	// all elements not in the set
+	notIn := rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 5, func(i int) int { return i }).Draw(t, "NotIn Values")
+	if ContainsAny(sm.set, notIn...) {
+		t.Fatalf("expected ContainsAny to be false for %v", notIn)
+	}
+}
+
+func (sm *SetStateMachine) Random(t *rapid.T) {
+	cardBefore := sm.set.Cardinality()
+	v, ok := Random(sm.set)
+	if cardBefore == 0 {
+		if ok {
+			t.Fatalf("Random on empty set should return false")
+		}
+		return
+	}
+	if !ok {
+		t.Fatalf("Random on non-empty set should return true")
+	}
+	if !sm.set.Contains(v) {
+		t.Fatalf("Random returned %v which is not in the set", v)
+	}
+	if sm.set.Cardinality() != cardBefore {
+		t.Fatalf("Random should not modify the set, cardinality changed from %d to %d", cardBefore, sm.set.Cardinality())
+	}
+}
+
+func (sm *SetStateMachine) Valuer(t *rapid.T) {
+	valuer, ok := any(sm.set).(driver.Valuer)
+	if !ok {
+		t.Fatalf("set does not implement driver.Valuer")
+	}
+	v, err := valuer.Value()
+	if err != nil {
+		t.Fatalf("Value() error: %v", err)
+	}
+	b, ok := v.([]byte)
+	if !ok {
+		t.Fatalf("Value() did not return []byte, got %T", v)
+	}
+	// round-trip: scan it back
+	clone := sm.set.NewEmpty()
+	scanner, ok := any(clone).(interface{ Scan(any) error })
+	if !ok {
+		t.Fatalf("set does not implement sql.Scanner")
+	}
+	if err := scanner.Scan(b); err != nil {
+		t.Fatalf("Scan() error: %v", err)
+	}
+	if !Equal(sm.set, clone) {
+		t.Fatalf("Value/Scan round-trip failed: expected %v, got %v", Elements(sm.set), Elements(clone))
 	}
 }
 
@@ -923,5 +1042,45 @@ func TestSyncMap_JSON(t *testing.T) {
 	}
 	if !Equal(b.Set, c.Set) {
 		t.Fatalf("expected %v, got %v", Elements(b.Set), Elements(c.Set))
+	}
+}
+
+func TestFirst_Last_Ordered(t *testing.T) {
+	t.Parallel()
+
+	s := NewOrderedWith(5, 3, 1)
+	if v, ok := First(s); !ok || v != 5 {
+		t.Fatalf("expected First to be 5, got %d (ok=%v)", v, ok)
+	}
+	if v, ok := Last(s); !ok || v != 1 {
+		t.Fatalf("expected Last to be 1, got %d (ok=%v)", v, ok)
+	}
+
+	empty := NewOrdered[int]()
+	if _, ok := First(empty); ok {
+		t.Fatalf("expected First on empty set to return false")
+	}
+	if _, ok := Last(empty); ok {
+		t.Fatalf("expected Last on empty set to return false")
+	}
+}
+
+func TestFirst_Last_LockedOrdered(t *testing.T) {
+	t.Parallel()
+
+	s := NewLockedOrderedWith(5, 3, 1)
+	if v, ok := First(s); !ok || v != 5 {
+		t.Fatalf("expected First to be 5, got %d (ok=%v)", v, ok)
+	}
+	if v, ok := Last(s); !ok || v != 1 {
+		t.Fatalf("expected Last to be 1, got %d (ok=%v)", v, ok)
+	}
+
+	empty := NewLockedOrdered[int]()
+	if _, ok := First(empty); ok {
+		t.Fatalf("expected First on empty set to return false")
+	}
+	if _, ok := Last(empty); ok {
+		t.Fatalf("expected Last on empty set to return false")
 	}
 }
