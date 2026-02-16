@@ -174,8 +174,8 @@ func Disjoint[K comparable](a, b Set[K]) bool {
 // to the yield function. The index is not stable across iterations. The yield function is called for each element in the
 // set. If the yield function returns false, the iteration is stopped.
 func Iter2[K comparable](iter iter.Seq[K]) func(func(i int, k K) bool) {
-	var i int
 	return func(yield func(i int, k K) bool) {
+		var i int
 		for k := range iter {
 			if !yield(i, k) {
 				return
@@ -220,7 +220,11 @@ func Min[K cmp.Ordered](s Set[K]) K {
 }
 
 // Chunk the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
+// Panics if n <= 0.
 func Chunk[K comparable](s Set[K], n int) iter.Seq[Set[K]] {
+	if n <= 0 {
+		panic("sets.Chunk: n must be > 0")
+	}
 	return func(yield func(Set[K]) bool) {
 		chunk := s.NewEmpty()
 		for i, v := range Iter2(s.Iterator) {

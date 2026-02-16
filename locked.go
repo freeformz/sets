@@ -101,8 +101,6 @@ func (s *Locked[M]) Iterator(yield func(M) bool) {
 
 // Clone returns a new set of the same underlying type.
 func (s *Locked[M]) Clone() Set[M] {
-	s.RLock()
-	defer s.RUnlock()
 	return NewLockedFrom(s.Iterator)
 }
 
