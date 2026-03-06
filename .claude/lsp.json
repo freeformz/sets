@@ -1,0 +1,10 @@
+{
+  "servers": [
+    {
+      "language": "go",
+      "extensions": [".go"],
+      "command": "gopls",
+      "args": ["serve"]
+    }
+  ]
+}
