@@ -312,6 +312,10 @@ func ExampleContainsSeq() {
 	ints.Add(3)
 	ints.Add(2)
 
+	if ContainsSeq(ints, slices.Values([]int{})) {
+		fmt.Println("Non-empty set contains empty sequence")
+	}
+
 	if ContainsSeq(ints, slices.Values([]int{3, 5})) {
 		fmt.Println("3 and 5 are present")
 	}
@@ -321,6 +325,7 @@ func ExampleContainsSeq() {
 	}
 	// Output:
 	// Empty set contains empty sequence
+	// Non-empty set contains empty sequence
 	// 3 and 5 are present
 	// 6 is not present
 }

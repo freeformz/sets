@@ -145,19 +145,22 @@ func Equal[K comparable](a, b Set[K]) bool {
 	if a.Cardinality() != b.Cardinality() {
 		return false
 	}
-	return Subset(a, b) && Subset(b, a)
+	for k := range a.Iterator {
+		if !b.Contains(k) {
+			return false
+		}
+	}
+	return true
 }
 
-// ContainsSeq returns true if the set contains all elements in the sequence. Empty sets are considered to contain only empty sequences.
+// ContainsSeq returns true if the set contains all elements in the sequence. Returns true for an empty sequence (vacuous truth).
 func ContainsSeq[K comparable](s Set[K], seq iter.Seq[K]) bool {
-	noitems := true
 	for k := range seq {
-		noitems = false
 		if !s.Contains(k) {
 			return false
 		}
 	}
-	return (s.Cardinality() == 0 && noitems) || !noitems
+	return true
 }
 
 // Disjoint returns true if the two sets have no elements in common.

@@ -59,7 +59,7 @@ func (s *Map[M]) Clear() int {
 
 // Add an element to the set. Returns true if the element was added, false if it was already present.
 func (s *Map[M]) Add(m M) bool {
-	if s.Contains(m) {
+	if _, ok := s.set[m]; ok {
 		return false
 	}
 	s.set[m] = struct{}{}
@@ -68,7 +68,7 @@ func (s *Map[M]) Add(m M) bool {
 
 // Remove an element from the set. Returns true if the element was removed, false if it was not present.
 func (s *Map[M]) Remove(m M) bool {
-	if !s.Contains(m) {
+	if _, ok := s.set[m]; !ok {
 		return false
 	}
 	delete(s.set, m)

@@ -43,6 +43,13 @@ All types implement `json.Marshaler`/`json.Unmarshaler` and `sql.Scanner`. The `
 
 When bumping the minimum Go version, the commit message should include `#minor` to trigger a minor version bump.
 
+## Conventions
+
+- **Zero-value style**: Use `var x T` instead of `x := T{}`; refer to this as "T's zero value" in prose.
+- **Tests are the spec**: When modifying implementations, do not change tests. Treat test failures as implementation bugs.
+- **Mathematical correctness**: Prefer mathematically correct semantics (e.g., vacuous truth for empty predicates).
+- **Commit messages**: Use conventional commits (`feat:`, `fix:`, `docs:`, etc.).
+
 ## Testing
 
 Tests use property-based state machine testing via `pgregory.net/rapid`. The state machine in `set_test.go` validates invariants across all set implementations. Tests run in parallel.
