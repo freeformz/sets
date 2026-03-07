@@ -102,6 +102,87 @@ These helpers work on all OrderedSet types.
 * `sets.First(aOrderedSet)` : Returns the first element of the ordered set, or (zero, false) if empty.
 * `sets.Last(aOrderedSet)` : Returns the last element of the ordered set, or (zero, false) if empty.
 
+## Benchmarks
+
+Benchmarks cover all 5 set implementations (`Map`, `SyncMap`, `Locked`, `Ordered`, `LockedOrdered`) with both `int` and `string` element types at sizes from 10 to 1,000,000.
+
+### Running Benchmarks
+
+```console
+# Standard Go benchmarks
+go test -bench=. -benchmem ./...
+
+# Statistical benchmarks (min/max/avg/stddev/p50/p95/p99) — outputs CSV
+BENCH_STATS=1 go test -v -run TestBenchStats -timeout 30m ./...
+
+# Include 10M element size (slow)
+BENCH_LARGE=1 go test -bench=. -benchmem ./...
+
+# Generate charts from CSV
+python3 benchmarks/bench_plot.py benchmarks/bench_stats.csv benchmarks/bench_charts
+```
+
+### Per-Element Operations (ns/elem)
+
+| Operation | Description |
+|-----------|-------------|
+| Add | Insert N elements into an empty set |
+| Contains | Look up every element in a pre-populated set |
+| Remove | Remove all elements from a pre-populated set |
+
+#### Add
+![Add](benchmarks/bench_charts/Add.png)
+
+#### Contains
+![Contains](benchmarks/bench_charts/Contains.png)
+
+#### Remove
+![Remove](benchmarks/bench_charts/Remove.png)
+
+### Batch Operations (ns/op)
+
+| Operation | Description |
+|-----------|-------------|
+| Clone | Copy the entire set |
+| Filter | Keep ~50% of elements |
+| MapBy | Transform all elements (identity) |
+| Chunk | Split into N/10 chunks |
+
+#### Clone
+![Clone](benchmarks/bench_charts/Clone.png)
+
+#### Filter
+![Filter](benchmarks/bench_charts/Filter.png)
+
+#### MapBy
+![MapBy](benchmarks/bench_charts/MapBy.png)
+
+#### Chunk
+![Chunk](benchmarks/bench_charts/Chunk.png)
+
+### Two-Set Operations (ns/op)
+
+Both sets have N elements with 50% overlap.
+
+| Operation | Description |
+|-----------|-------------|
+| Union | All elements from both sets |
+| Intersection | Elements in both sets |
+| Difference | Elements in first but not second |
+| SymmetricDifference | Elements in one set but not both |
+
+#### Union
+![Union](benchmarks/bench_charts/Union.png)
+
+#### Intersection
+![Intersection](benchmarks/bench_charts/Intersection.png)
+
+#### Difference
+![Difference](benchmarks/bench_charts/Difference.png)
+
+#### SymmetricDifference
+![SymmetricDifference](benchmarks/bench_charts/SymmetricDifference.png)
+
 ## Custom Set Types
 
 You can implement your own set types as long as they conform to the interfaces and can use the package level functions
