@@ -90,13 +90,19 @@ func (s *Locked[M]) Cardinality() int {
 	return s.set.Cardinality()
 }
 
-// Iterator yields all elements in the set. It holds a read lock for the duration of iteration. Calling any method that
-// modifies the set while iteration is happening will block until the iteration is complete.
+// Iterator yields all elements in the set. It takes a snapshot of the elements under a read lock and then iterates
+// without holding the lock. This means it is safe to call any method on the set from within the yield callback,
+// but the iteration may not reflect concurrent modifications.
 func (s *Locked[M]) Iterator(yield func(M) bool) {
 	s.RLock()
-	defer s.RUnlock()
+	elems := slices.Collect(s.set.Iterator)
+	s.RUnlock()
 
-	s.set.Iterator(yield)
+	for _, v := range elems {
+		if !yield(v) {
+			return
+		}
+	}
 }
 
 // Clone returns a new set of the same underlying type.
