@@ -369,7 +369,7 @@ func Random[K comparable](s Set[K]) (K, bool) {
 		return idx.At(rand.IntN(n))
 	}
 	skip := rand.IntN(n)
-	i := 0
+	var i int
 	for k := range s.Iterator {
 		if i == skip {
 			return k, true

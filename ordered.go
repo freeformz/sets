@@ -9,10 +9,23 @@ import (
 	"slices"
 )
 
-// Ordered sets maintains the order that the elements were added in.
+// Ordered maintains the order that elements were added in. It uses a gap buffer with a Fenwick tree
+// (binary indexed tree) to provide O(log N) Remove, At, and Index operations while keeping Add and
+// Contains at O(1) amortized and O(1) respectively. It is not safe for concurrent use.
+//
+// Complexity:
+//   - Add: O(1) amortized
+//   - Remove: O(log N) amortized
+//   - Contains: O(1)
+//   - At: O(log N)
+//   - Index: O(log N)
+//   - Iterator: O(N)
 type Ordered[M cmp.Ordered] struct {
-	idx    map[M]int
-	values []M
+	idx   map[M]int // element -> physical slot index
+	slots []M       // physical slots (may contain gaps from removals)
+	alive []bool    // slot occupancy bitmap
+	bit   []int     // Fenwick tree (1-indexed) for prefix sums of alive slots
+	count int       // number of alive elements
 }
 
 var _ OrderedSet[int] = new(Ordered[int])
@@ -21,8 +34,10 @@ var _ driver.Valuer = new(Ordered[int])
 // NewOrdered returns an empty *Ordered[M].
 func NewOrdered[M cmp.Ordered]() *Ordered[M] {
 	return &Ordered[M]{
-		idx:    make(map[M]int),
-		values: make([]M, 0),
+		idx:   make(map[M]int),
+		slots: make([]M, 0),
+		alive: make([]bool, 0),
+		bit:   make([]int, 1), // bit[0] is unused sentinel
 	}
 }
 
@@ -40,6 +55,105 @@ func NewOrderedWith[M cmp.Ordered](m ...M) *Ordered[M] {
 	return NewOrderedFrom(slices.Values(m))
 }
 
+// --- Fenwick tree (binary indexed tree) operations ---
+
+func (s *Ordered[M]) bitUpdate(i, delta int) {
+	for i++; i < len(s.bit); i += i & (-i) {
+		s.bit[i] += delta
+	}
+}
+
+func (s *Ordered[M]) bitQuery(i int) int {
+	var sum int
+	for i++; i > 0; i -= i & (-i) {
+		sum += s.bit[i]
+	}
+	return sum
+}
+
+// bitFindKth finds the physical slot index of the k-th alive element (0-indexed k).
+func (s *Ordered[M]) bitFindKth(k int) int {
+	k++ // convert to 1-indexed count
+	var pos int
+	bitmask := 1
+	for bitmask < len(s.bit) {
+		bitmask <<= 1
+	}
+	bitmask >>= 1
+	for bitmask > 0 {
+		next := pos + bitmask
+		if next < len(s.bit) && s.bit[next] < k {
+			k -= s.bit[next]
+			pos = next
+		}
+		bitmask >>= 1
+	}
+	return pos
+}
+
+// rebuildBIT reconstructs the Fenwick tree from the alive bitmap.
+// When growing, it doubles capacity to amortize rebuild cost.
+func (s *Ordered[M]) rebuildBIT() {
+	needed := len(s.slots) + 1
+	newCap := needed
+	if needed > len(s.bit) {
+		newCap = max(needed, len(s.bit)*2)
+	}
+	newCap = max(newCap, 2)
+	s.bit = make([]int, newCap)
+
+	// O(N) Fenwick tree construction
+	for i := range s.slots {
+		if s.alive[i] {
+			s.bit[i+1] = 1
+		}
+	}
+	for i := 1; i < len(s.bit); i++ {
+		j := i + (i & (-i))
+		if j < len(s.bit) {
+			s.bit[j] += s.bit[i]
+		}
+	}
+}
+
+// compact removes gaps by rebuilding the slots, alive, and bit arrays.
+func (s *Ordered[M]) compact() {
+	if s.count == len(s.slots) {
+		return
+	}
+	newSlots := make([]M, 0, s.count)
+	newAlive := make([]bool, 0, s.count)
+	for i, v := range s.slots {
+		if s.alive[i] {
+			s.idx[v] = len(newSlots)
+			newSlots = append(newSlots, v)
+			newAlive = append(newAlive, true)
+		}
+	}
+	s.slots = newSlots
+	s.alive = newAlive
+	s.rebuildBIT()
+}
+
+func (s *Ordered[M]) maybeCompact() {
+	if s.count > 0 && len(s.slots) > 2*s.count {
+		s.compact()
+	}
+}
+
+// elements returns a slice of all alive elements in insertion order.
+func (s *Ordered[M]) elements() []M {
+	out := make([]M, 0, s.count)
+	for i, v := range s.slots {
+		if s.alive[i] {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// --- Set interface ---
+
 // Contains returns true if the set contains the element.
 func (s *Ordered[M]) Contains(m M) bool {
 	_, ok := s.idx[m]
@@ -48,7 +162,7 @@ func (s *Ordered[M]) Contains(m M) bool {
 
 // Clear the set and returns the number of elements removed.
 func (s *Ordered[M]) Clear() int {
-	n := len(s.values)
+	n := s.count
 	if s.idx == nil {
 		s.idx = make(map[M]int)
 	} else {
@@ -56,11 +170,18 @@ func (s *Ordered[M]) Clear() int {
 			delete(s.idx, k)
 		}
 	}
-	if s.values == nil {
-		s.values = make([]M, 0)
+	if s.slots == nil {
+		s.slots = make([]M, 0)
 	} else {
-		s.values = s.values[:0]
+		s.slots = s.slots[:0]
 	}
+	if s.alive == nil {
+		s.alive = make([]bool, 0)
+	} else {
+		s.alive = s.alive[:0]
+	}
+	s.bit = make([]int, 1)
+	s.count = 0
 	return n
 }
 
@@ -70,22 +191,30 @@ func (s *Ordered[M]) Add(m M) bool {
 	if s.Contains(m) {
 		return false
 	}
-	s.values = append(s.values, m)
-	s.idx[m] = len(s.values) - 1
+	p := len(s.slots)
+	s.slots = append(s.slots, m)
+	s.alive = append(s.alive, true)
+	s.idx[m] = p
+	s.count++
+	if p+2 > len(s.bit) {
+		s.rebuildBIT()
+	} else {
+		s.bitUpdate(p, 1)
+	}
 	return true
 }
 
 // Remove an element from the set. Returns true if the element was removed, false if it was not present.
 func (s *Ordered[M]) Remove(m M) bool {
-	if !s.Contains(m) {
+	p, ok := s.idx[m]
+	if !ok {
 		return false
 	}
-	d := s.idx[m]
-	s.values = append(s.values[:d], s.values[d+1:]...)
-	for i, v := range s.values[d:] {
-		s.idx[v] = d + i
-	}
+	s.alive[p] = false
+	s.bitUpdate(p, -1)
 	delete(s.idx, m)
+	s.count--
+	s.maybeCompact()
 	return true
 }
 
@@ -94,14 +223,16 @@ func (s *Ordered[M]) Cardinality() int {
 	if s == nil {
 		return 0
 	}
-	return len(s.values)
+	return s.count
 }
 
 // Iterator yields all elements in the set in order.
 func (s *Ordered[M]) Iterator(yield func(M) bool) {
-	for _, k := range s.values {
-		if !yield(k) {
-			return
+	for i, v := range s.slots {
+		if s.alive[i] {
+			if !yield(v) {
+				return
+			}
 		}
 	}
 }
@@ -113,18 +244,26 @@ func (s *Ordered[M]) Clone() Set[M] {
 
 // Ordered iteration yields the index and value of each element in the set in order.
 func (s *Ordered[M]) Ordered(yield func(int, M) bool) {
-	for i, k := range s.values {
-		if !yield(i, k) {
-			return
+	var j int
+	for i, v := range s.slots {
+		if s.alive[i] {
+			if !yield(j, v) {
+				return
+			}
+			j++
 		}
 	}
 }
 
 // Backwards iteration yields the index and value of each element in the set in reverse order.
 func (s *Ordered[M]) Backwards(yield func(int, M) bool) {
-	for i := len(s.values) - 1; i >= 0; i-- {
-		if !yield(i, s.values[i]) {
-			return
+	j := s.count - 1
+	for i := len(s.slots) - 1; i >= 0; i-- {
+		if s.alive[i] {
+			if !yield(j, s.slots[i]) {
+				return
+			}
+			j--
 		}
 	}
 }
@@ -151,34 +290,37 @@ func (s *Ordered[M]) Pop() (M, bool) {
 
 // Sort the set in ascending order.
 func (s *Ordered[M]) Sort() {
-	slices.Sort(s.values)
-	for i, v := range s.values {
+	s.compact()
+	slices.Sort(s.slots)
+	for i, v := range s.slots {
 		s.idx[v] = i
 	}
+	// BIT is all-ones after compact; sort doesn't change alive status.
 }
 
 // At returns the element at the index. If the index is out of bounds, the second return value is false.
 func (s *Ordered[M]) At(i int) (M, bool) {
 	var zero M
-	if i < 0 || i >= len(s.values) {
+	if i < 0 || i >= s.count {
 		return zero, false
 	}
-	return s.values[i], true
+	p := s.bitFindKth(i)
+	return s.slots[p], true
 }
 
 // Index returns the index of the element in the set, or -1 if not present.
 func (s *Ordered[M]) Index(m M) int {
-	i, ok := s.idx[m]
+	p, ok := s.idx[m]
 	if !ok {
 		return -1
 	}
-	return i
+	return s.bitQuery(p) - 1
 }
 
 // String returns a string representation of the set. It returns a string of the form OrderedSet[T](<elements>).
 func (s *Ordered[M]) String() string {
 	var m M
-	return fmt.Sprintf("OrderedSet[%T](%v)", m, s.values)
+	return fmt.Sprintf("OrderedSet[%T](%v)", m, s.elements())
 }
 
 // Value implements the driver.Valuer interface. It returns the JSON representation of the set.
@@ -189,11 +331,12 @@ func (s *Ordered[M]) Value() (driver.Value, error) {
 // MarshalJSON implements json.Marshaler. It will marshal the set into a JSON array of the elements in the set. If the
 // set is empty an empty JSON array is returned.
 func (s *Ordered[M]) MarshalJSON() ([]byte, error) {
-	if len(s.values) == 0 {
+	vals := s.elements()
+	if len(vals) == 0 {
 		return []byte("[]"), nil
 	}
 
-	d, err := json.Marshal(s.values)
+	d, err := json.Marshal(vals)
 	if err != nil {
 		return d, fmt.Errorf("marshaling ordered set: %w", err)
 	}
