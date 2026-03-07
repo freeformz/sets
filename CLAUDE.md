@@ -45,7 +45,7 @@ When bumping the minimum Go version, the commit message should include `#minor` 
 
 ## Conventions
 
-- **Zero-value style**: Use `var x T` instead of `x := T{}` or `x := T's zero value`.
+- **Zero-value style**: Use `var x T` instead of `x := T{}`; refer to this as "T's zero value" in prose.
 - **Tests are the spec**: When modifying implementations, do not change tests. Treat test failures as implementation bugs.
 - **Mathematical correctness**: Prefer mathematically correct semantics (e.g., vacuous truth for empty predicates).
 - **Commit messages**: Use conventional commits (`feat:`, `fix:`, `docs:`, etc.).

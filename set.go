@@ -145,7 +145,12 @@ func Equal[K comparable](a, b Set[K]) bool {
 	if a.Cardinality() != b.Cardinality() {
 		return false
 	}
-	return Subset(a, b)
+	for k := range a.Iterator {
+		if !b.Contains(k) {
+			return false
+		}
+	}
+	return true
 }
 
 // ContainsSeq returns true if the set contains all elements in the sequence. Returns true for an empty sequence (vacuous truth).
