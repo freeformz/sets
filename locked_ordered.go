@@ -86,13 +86,19 @@ func (s *LockedOrdered[M]) Cardinality() int {
 	return s.set.Cardinality()
 }
 
-// Iterator yields all elements in the set in order. It holds a read lock for the duration of iteration. Calling any
-// method that modifies the set while iteration is happening will block until the iteration is complete.
+// Iterator yields all elements in the set in order. It takes a snapshot of the elements under a read lock and then
+// iterates without holding the lock. This means it is safe to call any method on the set from within the yield
+// callback, but the iteration may not reflect concurrent modifications.
 func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
 	s.RLock()
-	defer s.RUnlock()
+	elems := slices.Collect(s.set.Iterator)
+	s.RUnlock()
 
-	s.set.Iterator(yield)
+	for _, v := range elems {
+		if !yield(v) {
+			return
+		}
+	}
 }
 
 // Clone returns a new set of the same underlying type.
@@ -100,24 +106,34 @@ func (s *LockedOrdered[M]) Clone() Set[M] {
 	return NewLockedOrderedFrom(s.Iterator)
 }
 
-// Ordered iteration yields the index and value of each element in the set in order. It holds a read lock for the
-// duration of iteration. Calling any method that modifies the set while iteration is happening will block until the
-// iteration is complete.
+// Ordered iteration yields the index and value of each element in the set in order. It takes a snapshot of the
+// elements under a read lock and then iterates without holding the lock. This means it is safe to call any method
+// on the set from within the yield callback, but the iteration may not reflect concurrent modifications.
 func (s *LockedOrdered[M]) Ordered(yield func(int, M) bool) {
 	s.RLock()
-	defer s.RUnlock()
+	elems := slices.Collect(s.set.Iterator)
+	s.RUnlock()
 
-	s.set.Ordered(yield)
+	for i, v := range elems {
+		if !yield(i, v) {
+			return
+		}
+	}
 }
 
-// Backwards iteration yields the index and value of each element in the set in reverse order. It holds a read lock for
-// the duration of iteration. Calling any method that modifies the set while iteration is happening will block until the
-// iteration is complete.
+// Backwards iteration yields the index and value of each element in the set in reverse order. It takes a snapshot of
+// the elements under a read lock and then iterates without holding the lock. This means it is safe to call any method
+// on the set from within the yield callback, but the iteration may not reflect concurrent modifications.
 func (s *LockedOrdered[M]) Backwards(yield func(int, M) bool) {
 	s.RLock()
-	defer s.RUnlock()
+	elems := slices.Collect(s.set.Iterator)
+	s.RUnlock()
 
-	s.set.Backwards(yield)
+	for i := len(elems) - 1; i >= 0; i-- {
+		if !yield(i, elems[i]) {
+			return
+		}
+	}
 }
 
 // NewEmptyOrdered returns a new empty ordered set of the same underlying type.
