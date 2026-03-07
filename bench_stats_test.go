@@ -143,10 +143,8 @@ func writeStatsCSV(path string, records []benchRecord) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
 	w := csv.NewWriter(f)
-	defer w.Flush()
 
 	w.Write([]string{"operation", "impl", "type", "size", "unit", "min", "max", "avg", "stddev", "p50", "p95", "p99"})
 	for _, r := range records {
@@ -161,7 +159,13 @@ func writeStatsCSV(path string, records []benchRecord) error {
 			fmt.Sprintf("%.2f", r.stats.p99),
 		})
 	}
-	return nil
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 // scalePerElem divides each sample by n (for per-element timing).

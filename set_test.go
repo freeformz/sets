@@ -636,6 +636,90 @@ func TestOrdered_Remove(t *testing.T) {
 	}
 }
 
+func TestOrdered_AtIndex_AfterRemoval(t *testing.T) {
+	t.Parallel()
+
+	s := NewOrdered[int]()
+	for i := range 10 {
+		s.Add(i)
+	}
+
+	// Remove some elements to create gaps in the underlying slot array
+	s.Remove(2)
+	s.Remove(5)
+	s.Remove(8)
+
+	// Expected remaining elements in insertion order: 0,1,3,4,6,7,9
+	want := []int{0, 1, 3, 4, 6, 7, 9}
+
+	if s.Cardinality() != len(want) {
+		t.Fatalf("expected cardinality %d, got %d", len(want), s.Cardinality())
+	}
+
+	// Verify At returns the correct element for every logical index
+	for i, expected := range want {
+		got, ok := s.At(i)
+		if !ok {
+			t.Fatalf("At(%d): expected ok=true", i)
+		}
+		if got != expected {
+			t.Fatalf("At(%d): expected %d, got %d", i, expected, got)
+		}
+	}
+
+	// Verify Index returns the correct logical index for every remaining element
+	for i, elem := range want {
+		got := s.Index(elem)
+		if got != i {
+			t.Fatalf("Index(%d): expected %d, got %d", elem, i, got)
+		}
+	}
+
+	// Verify removed elements return -1 from Index
+	for _, removed := range []int{2, 5, 8} {
+		if idx := s.Index(removed); idx != -1 {
+			t.Fatalf("Index(%d): expected -1 for removed element, got %d", removed, idx)
+		}
+	}
+
+	// Verify At out of bounds
+	if _, ok := s.At(-1); ok {
+		t.Fatal("At(-1): expected ok=false")
+	}
+	if _, ok := s.At(len(want)); ok {
+		t.Fatalf("At(%d): expected ok=false", len(want))
+	}
+
+	// Remove more elements to trigger compaction (count > 0 && len(slots) > 2*count)
+	s.Remove(0)
+	s.Remove(1)
+	s.Remove(3)
+	s.Remove(4)
+	// Remaining: 6, 7, 9
+
+	wantAfter := []int{6, 7, 9}
+	if s.Cardinality() != len(wantAfter) {
+		t.Fatalf("after compaction: expected cardinality %d, got %d", len(wantAfter), s.Cardinality())
+	}
+
+	for i, expected := range wantAfter {
+		got, ok := s.At(i)
+		if !ok {
+			t.Fatalf("after compaction At(%d): expected ok=true", i)
+		}
+		if got != expected {
+			t.Fatalf("after compaction At(%d): expected %d, got %d", i, expected, got)
+		}
+	}
+
+	for i, elem := range wantAfter {
+		got := s.Index(elem)
+		if got != i {
+			t.Fatalf("after compaction Index(%d): expected %d, got %d", elem, i, got)
+		}
+	}
+}
+
 func TestEqualOrdered(t *testing.T) {
 	t.Parallel()
 	s := NewOrdered[int]()
