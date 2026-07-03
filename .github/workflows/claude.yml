@@ -30,6 +30,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Install the Go toolchain (pinned via go.mod) so Claude can build, vet,
+      # and run the race-enabled test suite when asked to verify changes.
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Pre-install staticcheck and put $GOPATH/bin on PATH so it resolves in the
+      # Claude step below. Mirrors the linters CI runs (see ci.yaml).
+      - name: Install lint tools
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -43,8 +57,8 @@ jobs:
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
+          # Allow Claude to run the project's verification commands non-interactively.
+          # go.mod requires Go 1.25+; the toolchain and staticcheck are installed in the
+          # steps above. See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          claude_args: '--allowedTools "Bash(go:*),Bash(staticcheck:*),Bash(gofmt:*)"'
 
