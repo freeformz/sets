@@ -33,6 +33,7 @@ CI runs checks (staticcheck, vet) on Ubuntu and tests (with `-race`) across Ubun
 - `SyncMap[M]` (`sync.go`) — `sync.Map`-based, concurrent-safe via `NewSyncMap()`
 - `Locked[M]` (`locked.go`) — RWMutex wrapper around a Set via `NewLocked()`
 - `Ordered[M]` (`ordered.go`) — insertion-ordered set via `NewOrdered()`
+- `SortedSet[M]` (`sorted.go`) — always-sorted set backed by a sorted slice via `NewSortedSet()`; read-optimized (O(log n) Contains, O(1) At, `Range(lo, hi)` queries), O(n) Add/Remove
 - `LockedOrdered[M]` (`locked_ordered.go`) — RWMutex wrapper around OrderedSet via `NewLockedOrdered()`
 
 **Design philosophy**: Functionality lives in package-level generic functions (in `set.go` and `ordered_set.go`), not methods. This aligns with stdlib `slices`/`maps` style. Locked types use composition, wrapping an inner set with mutex protection.

@@ -940,3 +940,65 @@ func ExampleLast() {
 	// 1
 	// empty set
 }
+
+func ExampleNewSortedSet() {
+	set := NewSortedSet[string]()
+	set.Add("c")
+	set.Add("a")
+	set.Add("b")
+	set.Add("b")
+	fmt.Println(set.Cardinality())
+
+	for v := range set.Iterator {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewSortedSetWith() {
+	set := NewSortedSetWith("c", "a", "b", "b")
+	fmt.Println(set.Cardinality())
+
+	for v := range set.Iterator {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleNewSortedSetFrom() {
+	set := NewSortedSetFrom(slices.Values([]string{"c", "a", "b", "b"}))
+	fmt.Println(set.Cardinality())
+
+	for v := range set.Iterator {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3
+	// a
+	// b
+	// c
+}
+
+func ExampleSortedSet_Range() {
+	set := NewSortedSetWith(50, 10, 40, 20, 30)
+
+	for v := range set.Range(15, 40) {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 20
+	// 30
+	// 40
+}
