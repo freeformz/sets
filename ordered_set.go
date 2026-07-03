@@ -65,6 +65,8 @@ func IsSorted[K cmp.Ordered](s OrderedSet[K]) bool {
 }
 
 // Reverse returns a new OrderedSet with the elements in the reverse order of the original OrderedSet.
+// Always-sorted implementations (e.g. SortedSet) cannot hold elements out of ascending order, so
+// reversing one returns a set with the same ascending order as the original.
 func Reverse[K cmp.Ordered](s OrderedSet[K]) OrderedSet[K] {
 	out := s.NewEmptyOrdered()
 	AppendSeq(out, func(yield func(k K) bool) {
@@ -93,6 +95,7 @@ func ReduceRight[K cmp.Ordered, O any](s OrderedSet[K], initial O, fn func(agg O
 	return out
 }
 
+// ForEachRight calls the function with each element in the set in reverse order.
 func ForEachRight[K cmp.Ordered](s OrderedSet[K], fn func(k K)) {
 	for _, k := range s.Backwards {
 		fn(k)

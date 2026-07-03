@@ -1,5 +1,5 @@
 // A set package with various set helper functions and set types.
-// Supports tha latest Go versions and features including generics
+// Supports the latest Go versions and features including generics
 // and iterators. The package is designed to be simple and easy to use
 // alongside the standard library.
 package sets
@@ -83,7 +83,7 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 	return n
 }
 
-// Union of the two sets. Returns a new set (of the same underling type as a) with all elements from both sets.
+// Union of the two sets. Returns a new set (of the same underlying type as a) with all elements from both sets.
 func Union[K comparable](a, b Set[K]) Set[K] {
 	c := a.Clone()
 	AppendSeq(c, b.Iterator)
@@ -187,10 +187,10 @@ func Disjoint[K comparable](a, b Set[K]) bool {
 // Iter2 is a helper function that simplifies iterating over a set when an "index" is needed, by providing a pseudo-index
 // to the yield function. The index is not stable across iterations. The yield function is called for each element in the
 // set. If the yield function returns false, the iteration is stopped.
-func Iter2[K comparable](iter iter.Seq[K]) func(func(i int, k K) bool) {
+func Iter2[K comparable](seq iter.Seq[K]) func(func(i int, k K) bool) {
 	return func(yield func(i int, k K) bool) {
 		var i int
-		for k := range iter {
+		for k := range seq {
 			if !yield(i, k) {
 				return
 			}
