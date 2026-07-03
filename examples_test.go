@@ -964,8 +964,8 @@ func ExampleNewSortedSetWith() {
 	set := NewSortedSetWith("c", "a", "b", "b")
 	fmt.Println(set.Cardinality())
 
-	for i := range set.Iterator {
-		fmt.Println(i)
+	for v := range set.Iterator {
+		fmt.Println(v)
 	}
 
 	// Output:
