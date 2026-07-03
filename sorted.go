@@ -60,7 +60,7 @@ func (s *SortedSet[M]) Contains(m M) bool {
 	return ok
 }
 
-// Clear the set and returns the number of elements removed.
+// Clear clears the set and returns the number of elements removed.
 func (s *SortedSet[M]) Clear() int {
 	n := len(s.el)
 	clear(s.el) // zero the retained backing array so element values can be collected
