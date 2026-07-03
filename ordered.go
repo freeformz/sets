@@ -238,7 +238,20 @@ func (s *Ordered[M]) Iterator(yield func(M) bool) {
 
 // Clone returns a copy of the set. The underlying type is the same as the original set.
 func (s *Ordered[M]) Clone() Set[M] {
-	return NewOrderedFrom(s.Iterator)
+	// bulk copy (compacted) instead of re-adding element by element, which would
+	// pay a map insert and Fenwick tree update per element
+	c := &Ordered[M]{
+		idx:   make(map[M]int, s.count),
+		slots: s.elements(),
+		alive: make([]bool, s.count),
+		count: s.count,
+	}
+	for i, v := range c.slots {
+		c.alive[i] = true
+		c.idx[v] = i
+	}
+	c.rebuildBIT()
+	return c
 }
 
 // Ordered iteration yields the index and value of each element in the set in order.

@@ -36,7 +36,11 @@ func NewFrom[M comparable](seq iter.Seq[M]) *Map[M] {
 
 // NewWith returns a new *Map[M] with the values provided.
 func NewWith[M comparable](m ...M) *Map[M] {
-	return NewFrom(slices.Values(m))
+	s := &Map[M]{set: make(map[M]struct{}, len(m))}
+	for _, x := range m {
+		s.set[x] = struct{}{}
+	}
+	return s
 }
 
 // Contains returns true if the set contains the element.
@@ -59,20 +63,18 @@ func (s *Map[M]) Clear() int {
 
 // Add an element to the set. Returns true if the element was added, false if it was already present.
 func (s *Map[M]) Add(m M) bool {
-	if _, ok := s.set[m]; ok {
-		return false
-	}
+	// single map operation; the length only changes when the element wasn't already present
+	before := len(s.set)
 	s.set[m] = struct{}{}
-	return true
+	return len(s.set) > before
 }
 
 // Remove an element from the set. Returns true if the element was removed, false if it was not present.
 func (s *Map[M]) Remove(m M) bool {
-	if _, ok := s.set[m]; !ok {
-		return false
-	}
+	// single map operation; the length only changes when the element was present
+	before := len(s.set)
 	delete(s.set, m)
-	return true
+	return len(s.set) < before
 }
 
 // Cardinality returns the number of elements in the set.
@@ -91,7 +93,11 @@ func (s *Map[M]) Iterator(yield func(M) bool) {
 
 // Clones the set. Returns a new set of the same underlying type.
 func (s *Map[M]) Clone() Set[M] {
-	return NewFrom(s.Iterator)
+	c := maps.Clone(s.set)
+	if c == nil {
+		c = make(map[M]struct{})
+	}
+	return &Map[M]{set: c}
 }
 
 // NewEmpty set of the same underlying type.
@@ -118,9 +124,12 @@ func (s *Map[M]) String() string {
 // MarshalJSON marshals the set to JSON. It returns a JSON array of the elements in the set. If the set is empty, it
 // returns an empty JSON array.
 func (s *Map[M]) MarshalJSON() ([]byte, error) {
-	v := slices.Collect(s.Iterator)
-	if len(v) == 0 {
+	if len(s.set) == 0 {
 		return []byte("[]"), nil
+	}
+	v := make([]M, 0, len(s.set))
+	for k := range s.set {
+		v = append(v, k)
 	}
 
 	d, err := json.Marshal(v)
