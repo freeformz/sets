@@ -103,7 +103,13 @@ func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
 
 // Clone returns a new set of the same underlying type.
 func (s *LockedOrdered[M]) Clone() Set[M] {
-	return NewLockedOrderedFrom(s.Iterator)
+	s.RLock()
+	defer s.RUnlock()
+	if s.set == nil {
+		return NewLockedOrdered[M]()
+	}
+	// OrderedSet documents that Clone always returns an ordered set.
+	return &LockedOrdered[M]{set: s.set.Clone().(OrderedSet[M])}
 }
 
 // Ordered iteration yields the index and value of each element in the set in order. It takes a snapshot of the
@@ -138,12 +144,17 @@ func (s *LockedOrdered[M]) Backwards(yield func(int, M) bool) {
 
 // NewEmptyOrdered returns a new empty ordered set of the same underlying type.
 func (s *LockedOrdered[M]) NewEmptyOrdered() OrderedSet[M] {
-	return NewLockedOrdered[M]()
+	s.RLock()
+	defer s.RUnlock()
+	if s.set == nil {
+		return NewLockedOrdered[M]()
+	}
+	return &LockedOrdered[M]{set: s.set.NewEmptyOrdered()}
 }
 
 // NewEmpty returns a new empty set of the same underlying type.
 func (s *LockedOrdered[M]) NewEmpty() Set[M] {
-	return NewLockedOrdered[M]()
+	return s.NewEmptyOrdered()
 }
 
 // Pop removes and returns an element from the set. If the set is empty, it returns the zero value of M and false.
@@ -204,7 +215,7 @@ func (s *LockedOrdered[M]) MarshalJSON() ([]byte, error) {
 
 	d, err := jm.MarshalJSON()
 	if err != nil {
-		return d, fmt.Errorf("marshaling locked set: %w", err)
+		return d, fmt.Errorf("marshaling locked ordered set: %w", err)
 	}
 
 	return d, nil
@@ -226,7 +237,7 @@ func (s *LockedOrdered[M]) UnmarshalJSON(d []byte) error {
 	}
 
 	if err := um.UnmarshalJSON(d); err != nil {
-		return fmt.Errorf("unmarshaling locked set: %w", err)
+		return fmt.Errorf("unmarshaling locked ordered set: %w", err)
 	}
 	return nil
 }

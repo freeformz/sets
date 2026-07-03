@@ -107,12 +107,22 @@ func (s *Locked[M]) Iterator(yield func(M) bool) {
 
 // Clone returns a new set of the same underlying type.
 func (s *Locked[M]) Clone() Set[M] {
-	return NewLockedFrom(s.Iterator)
+	s.RLock()
+	defer s.RUnlock()
+	if s.set == nil {
+		return NewLocked[M]()
+	}
+	return &Locked[M]{set: s.set.Clone()}
 }
 
 // NewEmpty returns a new empty set of the same underlying type.
 func (s *Locked[M]) NewEmpty() Set[M] {
-	return NewLocked[M]()
+	s.RLock()
+	defer s.RUnlock()
+	if s.set == nil {
+		return NewLocked[M]()
+	}
+	return &Locked[M]{set: s.set.NewEmpty()}
 }
 
 // Pop removes and returns an element from the set. If the set is empty, it returns the zero value of M and false.

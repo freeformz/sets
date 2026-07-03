@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Go generics-based set library (`github.com/freeformz/sets`) supporting iterators (`iter.Seq`). Requires Go 1.23+. No runtime dependencies — only test dependencies (`go-cmp`, `rapid`).
+Go generics-based set library (`github.com/freeformz/sets`) supporting iterators (`iter.Seq`). Requires Go 1.25+ (see go.mod). No runtime dependencies — only test dependencies (`go-cmp`, `rapid`).
 
 ## Commands
 
@@ -53,3 +53,5 @@ When bumping the minimum Go version, the commit message should include `#minor` 
 ## Testing
 
 Tests use property-based state machine testing via `pgregory.net/rapid`. The state machine in `set_test.go` validates invariants across all set implementations. Tests run in parallel.
+
+Heavier randomized stress tests live in the test-only `stresstest/` subpackage (differential testing against reference models, concurrency regression tests). New unit tests belong in the root package; add to `stresstest/` only for randomized/differential or concurrency stress coverage.

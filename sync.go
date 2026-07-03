@@ -51,8 +51,10 @@ func (s *SyncMap[M]) Contains(m M) bool {
 func (s *SyncMap[M]) Clear() int {
 	var n int
 	s.m.Range(func(k, _ any) bool {
-		s.m.Delete(k)
-		n++
+		// LoadAndDelete so a key concurrently removed by another goroutine is not counted here.
+		if _, loaded := s.m.LoadAndDelete(k); loaded {
+			n++
+		}
 		return true
 	})
 	return n
