@@ -121,6 +121,9 @@ func check(t *testing.T, s *sets.Ordered[int], r *model, trial, op int) {
 	if _, ok := s.At(len(want)); ok {
 		t.Fatalf("trial %d op %d: At(%d) ok = true", trial, op, len(want))
 	}
+	if idx := s.Index(999); idx != -1 { // 999 is outside the generated element domain
+		t.Fatalf("trial %d op %d: Index(999) = %d, want -1", trial, op, idx)
+	}
 
 	next := 0
 	s.Ordered(func(i, v int) bool {

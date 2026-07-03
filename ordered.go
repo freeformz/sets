@@ -166,9 +166,7 @@ func (s *Ordered[M]) Clear() int {
 	if s.idx == nil {
 		s.idx = make(map[M]int)
 	} else {
-		for k := range s.idx {
-			delete(s.idx, k)
-		}
+		clear(s.idx)
 	}
 	if s.slots == nil {
 		s.slots = make([]M, 0)

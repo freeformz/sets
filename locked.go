@@ -109,6 +109,9 @@ func (s *Locked[M]) Iterator(yield func(M) bool) {
 func (s *Locked[M]) Clone() Set[M] {
 	s.RLock()
 	defer s.RUnlock()
+	if s.set == nil {
+		return NewLocked[M]()
+	}
 	return &Locked[M]{set: s.set.Clone()}
 }
 

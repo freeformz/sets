@@ -105,6 +105,9 @@ func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
 func (s *LockedOrdered[M]) Clone() Set[M] {
 	s.RLock()
 	defer s.RUnlock()
+	if s.set == nil {
+		return NewLockedOrdered[M]()
+	}
 	// OrderedSet documents that Clone always returns an ordered set.
 	return &LockedOrdered[M]{set: s.set.Clone().(OrderedSet[M])}
 }
