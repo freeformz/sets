@@ -80,6 +80,9 @@ func (s *LockedOrdered[M]) Remove(m M) bool {
 
 // Cardinality returns the number of elements in the set.
 func (s *LockedOrdered[M]) Cardinality() int {
+	if s == nil {
+		return 0
+	}
 	s.RLock()
 	defer s.RUnlock()
 

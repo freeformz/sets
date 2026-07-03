@@ -618,7 +618,7 @@ func TestOrdered_Remove(t *testing.T) {
 	}
 	s.Remove(2)
 	if s.Cardinality() != 4 {
-		t.Fatalf("expected 9 elements, got %d", s.Cardinality())
+		t.Fatalf("expected 4 elements, got %d", s.Cardinality())
 	}
 	values := slices.Collect(s.Iterator)
 

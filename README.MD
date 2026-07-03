@@ -61,7 +61,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Elements(aSet)` : Elements of the set as a slice.
 * `sets.AppendSeq(aSet,sequence)` : Append the items in the sequence (an iterator) to the set.
 * `sets.RemoveSeq(aSet,sequence)` : Remove the items in the sequence (an iterator) from the set.
-* `sets.Union(aSet,bSet)` : Returns a new set (of the same underling type as aSet) with all elements from both sets.
+* `sets.Union(aSet,bSet)` : Returns a new set (of the same underlying type as aSet) with all elements from both sets.
 * `sets.Intersection(aSet,bSet)` : Returns a new set (of the same underlying type as aSet) with elements that are in both sets.
 * `sets.Difference(aSet,bSet)` : Returns a new set (of the same underlying type as aSet) with elements that are in the first set but not in the second set.
 * `sets.SymmetricDifference(aSet,bSet)` : Returns a new set (of the same underlying type as aSet) with elements that are not in both sets.
@@ -73,7 +73,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.Iter2(sequence)` : Returns a (int,V) iterator where the int represents a "pseudo" index.
 * `sets.Max(aSet)` : Returns the max element in the set as determined by the max builtin.
 * `sets.Min(aSet)` : Returns the min element in the set as determined by the min builtin.
-* `sets.Chunk(aSet,n)` : Chunks the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
+* `sets.Chunk(aSet,n)` : Chunks the set into sets of n elements each. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
 * `sets.IsEmpty(aSet)` : Returns true if the set is empty, otherwise false.
 * `sets.MapBy(aSet, func(v V) X { return ... }) bSet` : Maps the elements of the set to a new set.
 * `sets.MapTo(aSet, bSet, func(v V) X { return ... })` : Maps the elements of aSet into bSet.
@@ -86,7 +86,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.All(aSet, func(v V) bool { return true/false })` : Returns true if all elements in the set satisfy the predicate. Short-circuits on the first non-match.
 * `sets.ContainsAll(aSet, elements...)` : Returns true if the set contains all of the provided elements.
 * `sets.ContainsAny(aSet, elements...)` : Returns true if the set contains at least one of the provided elements.
-* `sets.Random(aSet)` : Returns a random element from the set without removing it. O(1) for ordered sets, O(n) for unordered sets.
+* `sets.Random(aSet)` : Returns a random element from the set without removing it. Uses indexed access for ordered sets (O(log n) or better for this package's implementations), O(n) for unordered sets.
 
 ## OrderedSet Helpers
 

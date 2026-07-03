@@ -83,9 +83,6 @@ func sortedStep(t *testing.T, rng *rand.Rand, s *sets.SortedSet[int], r *unsorte
 			t.Fatalf("trial %d op %d: Pop() ok = %t with %d elements", trial, op, ok, len(r.el))
 		}
 		if ok {
-			if want := r.sorted()[len(r.el)-1]; v != want {
-				t.Fatalf("trial %d op %d: Pop() = %d, want the maximum %d", trial, op, v, want)
-			}
 			if !r.remove(v) {
 				t.Fatalf("trial %d op %d: Pop() returned %d, not in the set", trial, op, v)
 			}

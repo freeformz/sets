@@ -72,7 +72,6 @@ func (s *SyncMap[M]) Pop() (M, bool) {
 	s.m.Range(func(key, _ any) bool {
 		if _, ok = s.m.LoadAndDelete(key); ok {
 			m = key.(M)
-			ok = true
 			return false
 		}
 		return true

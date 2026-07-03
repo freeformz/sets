@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"iter"
+	"math/rand/v2"
 	"slices"
 )
 
@@ -153,15 +154,17 @@ func (s *SortedSet[M]) NewEmpty() Set[M] {
 	return NewSortedSet[M]()
 }
 
-// Pop removes and returns the largest element of the set. If the set is empty, it returns the zero
-// value of M and false. Removing from the end avoids the shift other removals pay, so Pop is O(1).
+// Pop removes and returns a random element from the set. If the set is empty, it returns the zero
+// value of M and false. Removing an element other than the largest shifts the elements after it,
+// so Pop is O(N).
 func (s *SortedSet[M]) Pop() (M, bool) {
 	if len(s.el) == 0 {
 		var m M
 		return m, false
 	}
-	m := s.el[len(s.el)-1]
-	s.el = slices.Delete(s.el, len(s.el)-1, len(s.el))
+	i := rand.IntN(len(s.el))
+	m := s.el[i]
+	s.el = slices.Delete(s.el, i, i+1)
 	return m, true
 }
 
