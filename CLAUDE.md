@@ -41,14 +41,30 @@ All types implement `json.Marshaler`/`json.Unmarshaler` and `sql.Scanner`. The `
 
 ## Versioning
 
-When bumping the minimum Go version, the commit message should include `#minor` to trigger a minor version bump.
+Releases are fully automated by `.github/workflows/release.yaml` ("Bump version"), which runs on every PR merge to `main`:
+
+1. `anothrNick/github-tag-action` computes the next semver tag and pushes it (`v`-prefixed).
+2. A `gh release create --generate-notes` step publishes a matching GitHub Release.
+
+**This repo squash-merges PRs** (`allow_merge_commit: false`), so each merge produces exactly one commit on `main`. The tag action scans that squash commit's *entire* message — subject (the PR title, unless edited at merge time) plus body (which, by GitHub's default squash template, is the concatenated list of every individual commit message in the PR) — for bump tokens. Placing a token in **either** the PR title or any commit message in the branch works.
+
+**Bump rules** (`DEFAULT_BUMP: patch` is configured in the workflow, overriding the action's own default of `minor`):
+
+| Token (anywhere in the PR title or a commit message) | Result |
+|---|---|
+| *(none)* | patch bump — the default for ordinary fixes |
+| `#minor` | minor bump — required for new backwards-compatible functionality, and for bumping the minimum Go version |
+| `#major` | major bump — breaking API changes |
+| `#none` | no tag/release is created for this merge — use for docs/chore/CI-only changes that shouldn't cut a release |
+
+Match the token to the PR's overall scope, not to every individual commit inside it — a PR mixing a `feat:` with incidental `fix:`/`test:` commits still only needs one `#minor` somewhere for the whole merge to bump minor.
 
 ## Conventions
 
 - **Zero-value style**: Use `var x T` instead of `x := T{}`; refer to this as "T's zero value" in prose.
 - **Tests are the spec**: When modifying implementations, do not change tests. Treat test failures as implementation bugs.
 - **Mathematical correctness**: Prefer mathematically correct semantics (e.g., vacuous truth for empty predicates).
-- **Commit messages**: Use conventional commits (`feat:`, `fix:`, `docs:`, etc.).
+- **Commit messages**: Use conventional commits (`feat:`, `fix:`, `docs:`, etc.). See [Versioning](#versioning) for the bump-token convention (`#minor`/`#major`/`#none`) that controls what release a PR produces.
 
 ## Testing
 
