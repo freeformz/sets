@@ -59,6 +59,8 @@ Releases are fully automated by `.github/workflows/release.yaml` ("Bump version"
 
 Match the token to the PR's overall scope, not to every individual commit inside it — a PR mixing a `feat:` with incidental `fix:`/`test:` commits still only needs one `#minor` somewhere for the whole merge to bump minor.
 
+**Landmine**: the scanner does a plain substring match over the full squashed commit text — it has no idea a token appears inside prose rather than as a directive. Never write the literal, hash-prefixed tokens together in a commit message body when merely describing the convention (e.g. "supports #major/#minor/#patch/#none") — an incidental `#major` substring there will out-rank real `#none`/`#minor` tags elsewhere in the same PR and trigger an unintended major release (this happened once: PR #33's docs commit describing this exact convention accidentally cut `v1.0.0` from a `v0.12.0` base). When discussing the tokens in a commit message, drop the `#` prefix (`major`/`minor`/`patch`/`none`) or reference this file instead. The tokens are safe to write in full inside file content (e.g. this doc) — only commit *messages* are scanned, not diffs.
+
 ## Conventions
 
 - **Zero-value style**: Use `var x T` instead of `x := T{}`; refer to this as "T's zero value" in prose.
