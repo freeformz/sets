@@ -86,15 +86,22 @@ func (s *LockedOrdered[M]) Cardinality() int {
 	return s.set.Cardinality()
 }
 
+// snapshot returns the elements in order, collected under a read lock.
+func (s *LockedOrdered[M]) snapshot() []M {
+	s.RLock()
+	defer s.RUnlock()
+	elems := make([]M, 0, s.set.Cardinality())
+	for v := range s.set.Iterator {
+		elems = append(elems, v)
+	}
+	return elems
+}
+
 // Iterator yields all elements in the set in order. It takes a snapshot of the elements under a read lock and then
 // iterates without holding the lock. This means it is safe to call any method on the set from within the yield
 // callback, but the iteration may not reflect concurrent modifications.
 func (s *LockedOrdered[M]) Iterator(yield func(M) bool) {
-	s.RLock()
-	elems := slices.Collect(s.set.Iterator)
-	s.RUnlock()
-
-	for _, v := range elems {
+	for _, v := range s.snapshot() {
 		if !yield(v) {
 			return
 		}
@@ -116,11 +123,7 @@ func (s *LockedOrdered[M]) Clone() Set[M] {
 // elements under a read lock and then iterates without holding the lock. This means it is safe to call any method
 // on the set from within the yield callback, but the iteration may not reflect concurrent modifications.
 func (s *LockedOrdered[M]) Ordered(yield func(int, M) bool) {
-	s.RLock()
-	elems := slices.Collect(s.set.Iterator)
-	s.RUnlock()
-
-	for i, v := range elems {
+	for i, v := range s.snapshot() {
 		if !yield(i, v) {
 			return
 		}
@@ -131,10 +134,7 @@ func (s *LockedOrdered[M]) Ordered(yield func(int, M) bool) {
 // the elements under a read lock and then iterates without holding the lock. This means it is safe to call any method
 // on the set from within the yield callback, but the iteration may not reflect concurrent modifications.
 func (s *LockedOrdered[M]) Backwards(yield func(int, M) bool) {
-	s.RLock()
-	elems := slices.Collect(s.set.Iterator)
-	s.RUnlock()
-
+	elems := s.snapshot()
 	for i := len(elems) - 1; i >= 0; i-- {
 		if !yield(i, elems[i]) {
 			return

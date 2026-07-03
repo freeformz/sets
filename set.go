@@ -48,9 +48,17 @@ type Set[M comparable] interface {
 	String() string
 }
 
-// Elements of the set as a slice. This is a convenience wrapper around slices.Collect(s.Iterator)
+// Elements of the set as a slice. Returns nil if the set is empty.
 func Elements[K comparable](s Set[K]) []K {
-	return slices.Collect(s.Iterator)
+	n := s.Cardinality()
+	if n == 0 {
+		return nil
+	}
+	out := make([]K, 0, n)
+	for k := range s.Iterator {
+		out = append(out, k)
+	}
+	return out
 }
 
 // AppendSeq appends all elements from the sequence to the set.
@@ -84,10 +92,10 @@ func Union[K comparable](a, b Set[K]) Set[K] {
 
 // Intersection of the two sets. Returns a new set (of the same underlying type as a) with elements that are in both sets.
 func Intersection[K comparable](a, b Set[K]) Set[K] {
-	c := a.Clone()
+	c := a.NewEmpty()
 	for k := range a.Iterator {
-		if !b.Contains(k) {
-			c.Remove(k)
+		if b.Contains(k) {
+			c.Add(k)
 		}
 	}
 	return c
@@ -95,10 +103,10 @@ func Intersection[K comparable](a, b Set[K]) Set[K] {
 
 // Difference of the two sets. Returns a new set (of the same underlying type as a) with elements that are in the first set but not in the second set.
 func Difference[K comparable](a, b Set[K]) Set[K] {
-	c := a.Clone()
+	c := a.NewEmpty()
 	for k := range a.Iterator {
-		if b.Contains(k) {
-			c.Remove(k)
+		if !b.Contains(k) {
+			c.Add(k)
 		}
 	}
 	return c
@@ -106,11 +114,14 @@ func Difference[K comparable](a, b Set[K]) Set[K] {
 
 // SymmetricDifference of the two sets. Returns a new set (of the same underlying type as a) with elements that are not in both sets.
 func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
-	c := a.Clone()
+	c := a.NewEmpty()
+	for k := range a.Iterator {
+		if !b.Contains(k) {
+			c.Add(k)
+		}
+	}
 	for k := range b.Iterator {
-		if a.Contains(k) {
-			c.Remove(k)
-		} else {
+		if !a.Contains(k) {
 			c.Add(k)
 		}
 	}

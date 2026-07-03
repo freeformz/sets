@@ -2,6 +2,7 @@ package sets
 
 import (
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -241,6 +242,56 @@ func BenchmarkMapBy(b *testing.B) {
 
 func BenchmarkChunk(b *testing.B) {
 	benchEach(b, benchChunk[int], benchChunk[string])
+}
+
+func benchElements[M cmp.Ordered](b *testing.B, newSet func() Set[M], elems []M) {
+	s := newSet()
+	for _, e := range elems {
+		s.Add(e)
+	}
+	for b.Loop() {
+		Elements(s)
+	}
+}
+
+func BenchmarkElements(b *testing.B) {
+	benchEach(b, benchElements[int], benchElements[string])
+}
+
+func benchMarshalJSON[M cmp.Ordered](b *testing.B, newSet func() Set[M], elems []M) {
+	s := newSet()
+	for _, e := range elems {
+		s.Add(e)
+	}
+	jm, ok := s.(json.Marshaler)
+	if !ok {
+		b.Fatalf("%T is not a json.Marshaler", s)
+	}
+	for b.Loop() {
+		if _, err := jm.MarshalJSON(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkMarshalJSON(b *testing.B) {
+	benchEach(b, benchMarshalJSON[int], benchMarshalJSON[string])
+}
+
+func benchNewWith[M cmp.Ordered](b *testing.B, typeName string, genElems func(int) []M) {
+	for _, size := range benchSizes {
+		b.Run(fmt.Sprintf("%s/%d", typeName, size), func(b *testing.B) {
+			elems := genElems(size)
+			for b.Loop() {
+				NewWith(elems...)
+			}
+		})
+	}
+}
+
+func BenchmarkNewWith(b *testing.B) {
+	benchNewWith(b, "int", genInts)
+	benchNewWith(b, "string", genStrings)
 }
 
 func BenchmarkUnion(b *testing.B) {

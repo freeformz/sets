@@ -95,7 +95,10 @@ func (s *Locked[M]) Cardinality() int {
 // but the iteration may not reflect concurrent modifications.
 func (s *Locked[M]) Iterator(yield func(M) bool) {
 	s.RLock()
-	elems := slices.Collect(s.set.Iterator)
+	elems := make([]M, 0, s.set.Cardinality())
+	for v := range s.set.Iterator {
+		elems = append(elems, v)
+	}
 	s.RUnlock()
 
 	for _, v := range elems {
