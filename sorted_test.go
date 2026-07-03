@@ -220,10 +220,21 @@ func TestSortedSet_Pop(t *testing.T) {
 	t.Parallel()
 
 	s := NewSortedSetWith(3, 1, 2)
-	for _, want := range []int{3, 2, 1} {
+	remaining := map[int]bool{1: true, 2: true, 3: true}
+	for range 3 {
 		v, ok := s.Pop()
-		if !ok || v != want {
-			t.Fatalf("Pop() = %d, %v, want %d, true", v, ok, want)
+		if !ok {
+			t.Fatalf("Pop() on non-empty set returned ok=false")
+		}
+		if !remaining[v] {
+			t.Fatalf("Pop() = %d, which was already popped or never present", v)
+		}
+		delete(remaining, v)
+		if s.Contains(v) {
+			t.Fatalf("Pop() returned %d but it is still in the set", v)
+		}
+		if !IsSorted(s) {
+			t.Fatalf("set not sorted after Pop: %v", Elements(s))
 		}
 	}
 	if v, ok := s.Pop(); ok {
