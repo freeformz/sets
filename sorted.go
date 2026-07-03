@@ -130,7 +130,7 @@ func (s *SortedSet[M]) Backwards(yield func(int, M) bool) {
 }
 
 // Range returns an iterator over the elements v for which lo <= v <= hi, in ascending order. The
-// endpoints are located by binary search, so a call costs O(log N) plus the number of elements
+// lower bound is located by binary search, so a call costs O(log N) plus the number of elements
 // yielded. If lo > hi the iterator yields nothing.
 func (s *SortedSet[M]) Range(lo, hi M) iter.Seq[M] {
 	return func(yield func(M) bool) {
