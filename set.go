@@ -222,7 +222,7 @@ func Min[K cmp.Ordered](s Set[K]) K {
 	return mn
 }
 
-// Chunk the set into n sets of equal size. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
+// Chunk the set into sets of n elements each. The last set will have fewer elements if the cardinality of the set is not a multiple of n.
 // Panics if n <= 0.
 func Chunk[K comparable](s Set[K], n int) iter.Seq[Set[K]] {
 	if n <= 0 {
@@ -352,16 +352,12 @@ func ContainsAll[K comparable](s Set[K], elements ...K) bool {
 
 // ContainsAny returns true if the set contains at least one of the provided elements. Returns false if no elements are provided.
 func ContainsAny[K comparable](s Set[K], elements ...K) bool {
-	for _, k := range elements {
-		if s.Contains(k) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(elements, s.Contains)
 }
 
 // Random returns a random element from the set without removing it. The second return value is false if the set is empty.
-// For ordered sets, this is O(1) via indexed access. For unordered sets, this is O(n) via iteration.
+// For ordered sets, this uses indexed access (O(log n) for this package's ordered implementations). For unordered sets,
+// this is O(n) via iteration.
 func Random[K comparable](s Set[K]) (K, bool) {
 	n := s.Cardinality()
 	if n == 0 {

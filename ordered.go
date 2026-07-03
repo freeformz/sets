@@ -173,6 +173,7 @@ func (s *Ordered[M]) Clear() int {
 	if s.slots == nil {
 		s.slots = make([]M, 0)
 	} else {
+		clear(s.slots) // zero retained backing array so element values can be collected
 		s.slots = s.slots[:0]
 	}
 	if s.alive == nil {
