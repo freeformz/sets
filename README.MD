@@ -26,7 +26,8 @@ go get github.com/freeformz/sets
   * `NewLocked()` -> Map based that uses a lock to be concurrency safe;
   * `NewSyncMap()` -> sync.Map based (concurrency safe);
   * `NewOrdered()` -> ordered set (uses a map for indexes and a slice for order);
-  * `NewLockedOrdered()` -> ordered set that is concurrency safe.
+  * `NewLockedOrdered()` -> ordered set that is concurrency safe;
+  * `NewSortedSet()` -> always sorted set backed by a single sorted slice. O(log n) `Contains`, O(1) `At`, range queries via `Range(lo, hi)`, and lower memory use, at the cost of O(n) `Add`/`Remove`. Best for read-heavy workloads. Wrap with `NewLockedOrderedWrapping()` to make it concurrency safe.
 * `sets` package functions align with standard lib packages like `slices` and `maps`.
 * Implement as much as possible as package functions, not Set methods.
 * Exhaustive unit tests via [rapid](https://github.com/flyingmutant/rapid).
@@ -102,7 +103,7 @@ These helpers work on all OrderedSet types.
 
 ## Benchmarks
 
-Benchmarks cover all 5 set implementations (`Map`, `SyncMap`, `Locked`, `Ordered`, `LockedOrdered`) with both `int` and `string` element types at sizes from 10 to 1,000,000.
+Benchmarks cover all 6 set implementations (`Map`, `SyncMap`, `Locked`, `Ordered`, `SortedSet`, `LockedOrdered`) with both `int` and `string` element types at sizes from 10 to 1,000,000.
 
 ### Running Benchmarks
 

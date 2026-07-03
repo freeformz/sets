@@ -51,6 +51,7 @@ var benchImpls = []benchImpl{
 	{"SyncMap", func() Set[int] { return NewSyncMap[int]() }, func() Set[string] { return NewSyncMap[string]() }},
 	{"Locked", func() Set[int] { return NewLocked[int]() }, func() Set[string] { return NewLocked[string]() }},
 	{"Ordered", func() Set[int] { return NewOrdered[int]() }, func() Set[string] { return NewOrdered[string]() }},
+	{"SortedSet", func() Set[int] { return NewSortedSet[int]() }, func() Set[string] { return NewSortedSet[string]() }},
 	{"LockedOrdered", func() Set[int] { return NewLockedOrdered[int]() }, func() Set[string] { return NewLockedOrdered[string]() }},
 }
 
