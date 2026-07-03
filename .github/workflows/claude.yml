@@ -60,5 +60,5 @@ jobs:
           # Allow Claude to run the project's verification commands non-interactively.
           # go.mod requires Go 1.25+; the toolchain and staticcheck are installed in the
           # steps above. See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          claude_args: '--allowedTools "Bash(go:*),Bash(staticcheck:*),Bash(gofmt:*)"'
+          claude_args: '--allowedTools "Bash(go test:*),Bash(go vet:*),Bash(go build:*),Bash(go env:*),Bash(go version:*),Bash(staticcheck:*),Bash(gofmt:*)"'
 
