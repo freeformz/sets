@@ -278,15 +278,20 @@ func BenchmarkMarshalJSON(b *testing.B) {
 	benchEach(b, benchMarshalJSON[int], benchMarshalJSON[string])
 }
 
-func BenchmarkNewWith(b *testing.B) {
+func benchNewWith[M cmp.Ordered](b *testing.B, typeName string, genElems func(int) []M) {
 	for _, size := range benchSizes {
-		b.Run(fmt.Sprintf("int/%d", size), func(b *testing.B) {
-			elems := genInts(size)
+		b.Run(fmt.Sprintf("%s/%d", typeName, size), func(b *testing.B) {
+			elems := genElems(size)
 			for b.Loop() {
 				NewWith(elems...)
 			}
 		})
 	}
+}
+
+func BenchmarkNewWith(b *testing.B) {
+	benchNewWith(b, "int", genInts)
+	benchNewWith(b, "string", genStrings)
 }
 
 func BenchmarkUnion(b *testing.B) {
