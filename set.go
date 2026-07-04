@@ -84,14 +84,26 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 }
 
 // Union of the two sets. Returns a new set (of the same underlying type as a) with all elements from both sets.
+// When both sets are BitSets of the same element type the union is computed word-wise.
 func Union[K comparable](a, b Set[K]) Set[K] {
+	if bw, ok := a.(bitwiseSet); ok {
+		if c, ok := bw.bitwiseUnion(b); ok {
+			return c.(Set[K])
+		}
+	}
 	c := a.Clone()
 	AppendSeq(c, b.Iterator)
 	return c
 }
 
 // Intersection of the two sets. Returns a new set (of the same underlying type as a) with elements that are in both sets.
+// When both sets are BitSets of the same element type the intersection is computed word-wise.
 func Intersection[K comparable](a, b Set[K]) Set[K] {
+	if bw, ok := a.(bitwiseSet); ok {
+		if c, ok := bw.bitwiseIntersection(b); ok {
+			return c.(Set[K])
+		}
+	}
 	c := a.NewEmpty()
 	for k := range a.Iterator {
 		if b.Contains(k) {
@@ -102,7 +114,13 @@ func Intersection[K comparable](a, b Set[K]) Set[K] {
 }
 
 // Difference of the two sets. Returns a new set (of the same underlying type as a) with elements that are in the first set but not in the second set.
+// When both sets are BitSets of the same element type the difference is computed word-wise.
 func Difference[K comparable](a, b Set[K]) Set[K] {
+	if bw, ok := a.(bitwiseSet); ok {
+		if c, ok := bw.bitwiseDifference(b); ok {
+			return c.(Set[K])
+		}
+	}
 	c := a.NewEmpty()
 	for k := range a.Iterator {
 		if !b.Contains(k) {
@@ -113,7 +131,13 @@ func Difference[K comparable](a, b Set[K]) Set[K] {
 }
 
 // SymmetricDifference of the two sets. Returns a new set (of the same underlying type as a) with elements that are not in both sets.
+// When both sets are BitSets of the same element type the symmetric difference is computed word-wise.
 func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
+	if bw, ok := a.(bitwiseSet); ok {
+		if c, ok := bw.bitwiseSymmetricDifference(b); ok {
+			return c.(Set[K])
+		}
+	}
 	c := a.NewEmpty()
 	for k := range a.Iterator {
 		if !b.Contains(k) {

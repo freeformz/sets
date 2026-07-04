@@ -305,7 +305,9 @@ func TestBenchStats(t *testing.T) {
 	for _, impl := range benchImpls {
 		t.Logf("Benchmarking %s...", impl.name)
 		collectAllStats(t, &records, impl.name, "int", impl.newInt, genInts, benchSizes, samples)
-		collectAllStats(t, &records, impl.name, "string", impl.newStr, genStrings, benchSizes, samples)
+		if impl.newStr != nil {
+			collectAllStats(t, &records, impl.name, "string", impl.newStr, genStrings, benchSizes, samples)
+		}
 	}
 
 	if err := writeStatsCSV(outFile, records); err != nil {

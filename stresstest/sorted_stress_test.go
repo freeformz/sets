@@ -62,7 +62,7 @@ func TestSortedSetDifferential(t *testing.T) {
 }
 
 // sortedStep applies one random operation to both the set and the reference model.
-func sortedStep(t *testing.T, rng *rand.Rand, s *sets.SortedSet[int], r *unsortedModel, trial, op int) {
+func sortedStep(t *testing.T, rng *rand.Rand, s rangeOrderedSet, r *unsortedModel, trial, op int) {
 	t.Helper()
 	switch rng.IntN(10) {
 	case 0, 1, 2, 3:
@@ -98,7 +98,7 @@ func sortedStep(t *testing.T, rng *rand.Rand, s *sets.SortedSet[int], r *unsorte
 }
 
 // sortedCheck verifies every read-side invariant of s against the reference model.
-func sortedCheck(t *testing.T, rng *rand.Rand, s *sets.SortedSet[int], r *unsortedModel, trial, op int) {
+func sortedCheck(t *testing.T, rng *rand.Rand, s rangeOrderedSet, r *unsortedModel, trial, op int) {
 	t.Helper()
 	want := r.sorted()
 
