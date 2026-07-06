@@ -17,9 +17,11 @@ type rangeOrderedSet interface {
 
 // TestBitSetDifferential runs the same randomized Add/Remove/Sort/Pop/Clear differential as
 // TestSortedSetDifferential against BitSet, additionally interleaving Compact and Reserve —
-// the memory-management operations must never change the observable contents. The domain (50)
-// spans multiple 64-bit words so word-boundary bookkeeping is exercised constantly, and
-// Reserve/Clear/Compact repeatedly grow and release the backing array.
+// the memory-management operations must never change the observable contents. The element
+// domain (0..49) fits in a single 64-bit word; it is the Reserve span (-64..128), crossing
+// the signed-zero word boundary, that forces Compact and regrowth to shuffle whole words
+// around the occupied one. (Multi-word add/remove churn is covered by the rapid tests in the
+// root package, which draw from ±1024.)
 func TestBitSetDifferential(t *testing.T) {
 	t.Parallel()
 

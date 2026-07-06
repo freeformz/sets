@@ -23,7 +23,7 @@ type SetStateMachine struct {
 	set    Set[int]
 	stateI map[int]int
 	stateO []int
-	intGen *rapid.Generator[int] // value generator; nil means sm.int()
+	intGen *rapid.Generator[int] // value generator; nil means the full-range rapid.Int()
 }
 
 // int returns the generator used to draw element values. Implementations whose
