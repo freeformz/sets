@@ -475,8 +475,9 @@ func TestBitSet_HugeSpanPanics(t *testing.T) {
 	s.Add(math.MaxUint64)
 }
 
-// algebraStub is a minimal third-party-style Set whose Algebra methods return a sentinel,
-// proving the package-level functions honor Algebra implementations outside this package's
+// algebraStub is a minimal third-party-style Set implementing all four set-algebra optimization
+// interfaces (Unioner, Intersectioner, Differencer, SymmetricDifferencer) with methods that return
+// a sentinel, proving the package-level functions honor implementations outside this package's
 // concrete types. The embedded Set provides the rest of the interface.
 type algebraStub struct {
 	Set[int]
@@ -489,10 +490,20 @@ func (a *algebraStub) Intersection(Set[int]) (Set[int], bool)        { return a.
 func (a *algebraStub) Difference(Set[int]) (Set[int], bool)          { return a.sentinel, a.optimize }
 func (a *algebraStub) SymmetricDifference(Set[int]) (Set[int], bool) { return a.sentinel, a.optimize }
 
-// TestAlgebraOptionalInterface verifies that Union/Intersection/Difference/SymmetricDifference
-// use any first operand's Algebra implementation when it reports true, and fall back to the
-// generic element-wise path when it reports false.
-func TestAlgebraOptionalInterface(t *testing.T) {
+// unionerOnlyStub implements only Unioner: the other set-algebra functions must work with it via
+// the generic path without it having to implement (or decline) the other optimization interfaces.
+type unionerOnlyStub struct {
+	Set[int]
+	sentinel Set[int]
+}
+
+func (u *unionerOnlyStub) Union(Set[int]) (Set[int], bool) { return u.sentinel, true }
+
+// TestAlgebraOptionalInterfaces verifies that Union/Intersection/Difference/SymmetricDifference
+// use any first operand's optimization-interface implementation when it reports true, fall back to
+// the generic element-wise path when it reports false, and work unchanged with implementations
+// that only opt into a subset of the interfaces.
+func TestAlgebraOptionalInterfaces(t *testing.T) {
 	t.Parallel()
 
 	sentinel := NewWith(42)
@@ -513,21 +524,39 @@ func TestAlgebraOptionalInterface(t *testing.T) {
 	for _, op := range ops {
 		optimized := op.f(&algebraStub{Set: inner, sentinel: sentinel, optimize: true}, other)
 		if optimized != sentinel {
-			t.Fatalf("%s: expected the Algebra result to be returned, got %v", op.name, Elements(optimized))
+			t.Fatalf("%s: expected the optimized result to be returned, got %v", op.name, Elements(optimized))
 		}
 
 		fallback := op.f(&algebraStub{Set: inner, sentinel: sentinel, optimize: false}, other)
 		if fallback == sentinel {
-			t.Fatalf("%s: Algebra reported false but its result was used", op.name)
+			t.Fatalf("%s: implementation reported false but its result was used", op.name)
 		}
 		got := Elements(fallback)
 		slices.Sort(got)
 		if !slices.Equal(got, op.want) {
 			t.Fatalf("%s fallback = %v, want %v", op.name, got, op.want)
 		}
+
+		// a Unioner-only implementation accelerates Union and takes the generic
+		// path everywhere else
+		partial := op.f(&unionerOnlyStub{Set: inner, sentinel: sentinel}, other)
+		if op.name == "Union" {
+			if partial != sentinel {
+				t.Fatalf("Union: expected the Unioner result to be returned, got %v", Elements(partial))
+			}
+		} else {
+			if partial == sentinel {
+				t.Fatalf("%s: used the Unioner sentinel", op.name)
+			}
+			got := Elements(partial)
+			slices.Sort(got)
+			if !slices.Equal(got, op.want) {
+				t.Fatalf("%s with Unioner-only set = %v, want %v", op.name, got, op.want)
+			}
+		}
 	}
 
-	// BitSet's Algebra methods report false for non-BitSet operands
+	// BitSet's optimization methods report false for non-BitSet operands
 	if _, ok := NewBitSetWith(1).Union(NewWith(2)); ok {
 		t.Fatal("BitSet.Union(non-BitSet) must report false")
 	}

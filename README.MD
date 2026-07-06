@@ -188,10 +188,11 @@ Both sets have N elements with 50% overlap.
 You can implement your own set types as long as they conform to the interfaces and can use the package level functions
 as they do not rely on any internal implementation details.
 
-Custom implementations can also implement the optional `Algebra[M]` interface to provide optimized
-`Union`/`Intersection`/`Difference`/`SymmetricDifference` implementations: the package-level functions check their
-first operand for it and fall back to the generic element-wise path whenever a method reports it cannot handle the
-operand. `BitSet` uses this to combine two `BitSet`s word-wise.
+Custom implementations can also implement the optional single-method interfaces `Unioner[M]`, `Intersectioner[M]`,
+`Differencer[M]`, and `SymmetricDifferencer[M]` — in any combination — to provide optimized implementations of the
+corresponding package-level functions: each function checks its first operand for its interface and falls back to the
+generic element-wise path when the operand doesn't implement it or the method reports it cannot handle the other set.
+`BitSet` implements all four to combine two `BitSet`s word-wise.
 
 ## TODOs
 

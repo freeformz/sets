@@ -83,29 +83,41 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 	return n
 }
 
-// Algebra is an optional interface that Set implementations can implement to provide optimized
-// implementations of the package-level Union, Intersection, Difference, and SymmetricDifference
-// functions. Those functions check whether their first operand implements Algebra and, if so, call
-// the corresponding method; when the method reports false they fall back to the generic
-// element-wise implementation, so implementations only need to handle the operand types they can
-// actually accelerate (typically their own concrete type). BitSet implements Algebra with
-// word-wise operations.
-//
-// Implementations must not modify the receiver or the operand, and when reporting true must return
-// a new set, of the same underlying type as the receiver, holding the correct result.
-type Algebra[M comparable] interface {
+// Unioner is an optional interface that Set implementations can implement to provide an optimized
+// implementation of the package-level Union function, which checks whether its first operand
+// implements it. A Union method reporting false means the implementation cannot handle that
+// operand (typically anything but its own concrete type) and the caller falls back to the generic
+// element-wise path, so implementations only handle the operand types they can actually
+// accelerate. Implementations must not modify the receiver or the operand, and when reporting true
+// must return a new set, of the same underlying type as the receiver, holding the correct result.
+// The Intersectioner, Differencer, and SymmetricDifferencer interfaces work the same way for the
+// other set-algebra functions; implement whichever subset you can optimize. BitSet implements all
+// four with word-wise operations.
+type Unioner[M comparable] interface {
 	// Union returns a new set with all elements from the receiver and other, or false if other
 	// cannot be handled more efficiently than the generic element-wise fallback.
 	Union(other Set[M]) (Set[M], bool)
+}
 
+// Intersectioner is an optional interface providing an optimized Intersection; see Unioner for the
+// contract shared by the set-algebra optimization interfaces.
+type Intersectioner[M comparable] interface {
 	// Intersection returns a new set with the elements common to the receiver and other, or false
 	// if other cannot be handled more efficiently than the generic element-wise fallback.
 	Intersection(other Set[M]) (Set[M], bool)
+}
 
+// Differencer is an optional interface providing an optimized Difference; see Unioner for the
+// contract shared by the set-algebra optimization interfaces.
+type Differencer[M comparable] interface {
 	// Difference returns a new set with the elements of the receiver that are not in other, or
 	// false if other cannot be handled more efficiently than the generic element-wise fallback.
 	Difference(other Set[M]) (Set[M], bool)
+}
 
+// SymmetricDifferencer is an optional interface providing an optimized SymmetricDifference; see
+// Unioner for the contract shared by the set-algebra optimization interfaces.
+type SymmetricDifferencer[M comparable] interface {
 	// SymmetricDifference returns a new set with the elements that are in exactly one of the
 	// receiver and other, or false if other cannot be handled more efficiently than the generic
 	// element-wise fallback.
@@ -113,10 +125,10 @@ type Algebra[M comparable] interface {
 }
 
 // Union of the two sets. Returns a new set (of the same underlying type as a) with all elements from both sets.
-// If a implements Algebra, its optimized Union is used when it can handle b (e.g. two BitSets combine word-wise).
+// If a implements Unioner, its optimized Union is used when it can handle b (e.g. two BitSets combine word-wise).
 func Union[K comparable](a, b Set[K]) Set[K] {
-	if al, ok := a.(Algebra[K]); ok {
-		if c, ok := al.Union(b); ok {
+	if u, ok := a.(Unioner[K]); ok {
+		if c, ok := u.Union(b); ok {
 			return c
 		}
 	}
@@ -126,10 +138,10 @@ func Union[K comparable](a, b Set[K]) Set[K] {
 }
 
 // Intersection of the two sets. Returns a new set (of the same underlying type as a) with elements that are in both sets.
-// If a implements Algebra, its optimized Intersection is used when it can handle b (e.g. two BitSets combine word-wise).
+// If a implements Intersectioner, its optimized Intersection is used when it can handle b (e.g. two BitSets combine word-wise).
 func Intersection[K comparable](a, b Set[K]) Set[K] {
-	if al, ok := a.(Algebra[K]); ok {
-		if c, ok := al.Intersection(b); ok {
+	if i, ok := a.(Intersectioner[K]); ok {
+		if c, ok := i.Intersection(b); ok {
 			return c
 		}
 	}
@@ -143,10 +155,10 @@ func Intersection[K comparable](a, b Set[K]) Set[K] {
 }
 
 // Difference of the two sets. Returns a new set (of the same underlying type as a) with elements that are in the first set but not in the second set.
-// If a implements Algebra, its optimized Difference is used when it can handle b (e.g. two BitSets combine word-wise).
+// If a implements Differencer, its optimized Difference is used when it can handle b (e.g. two BitSets combine word-wise).
 func Difference[K comparable](a, b Set[K]) Set[K] {
-	if al, ok := a.(Algebra[K]); ok {
-		if c, ok := al.Difference(b); ok {
+	if d, ok := a.(Differencer[K]); ok {
+		if c, ok := d.Difference(b); ok {
 			return c
 		}
 	}
@@ -160,10 +172,10 @@ func Difference[K comparable](a, b Set[K]) Set[K] {
 }
 
 // SymmetricDifference of the two sets. Returns a new set (of the same underlying type as a) with elements that are not in both sets.
-// If a implements Algebra, its optimized SymmetricDifference is used when it can handle b (e.g. two BitSets combine word-wise).
+// If a implements SymmetricDifferencer, its optimized SymmetricDifference is used when it can handle b (e.g. two BitSets combine word-wise).
 func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
-	if al, ok := a.(Algebra[K]); ok {
-		if c, ok := al.SymmetricDifference(b); ok {
+	if sd, ok := a.(SymmetricDifferencer[K]); ok {
+		if c, ok := sd.SymmetricDifference(b); ok {
 			return c
 		}
 	}

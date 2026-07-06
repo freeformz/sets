@@ -54,7 +54,8 @@ type Integer interface {
 //   - Iterator: O(W + N)
 //   - Union, Intersection, Difference, SymmetricDifference with another BitSet
 //     of the same element type: O(W) word-wise, via the package-level functions
-//     (BitSet implements the optional Algebra interface)
+//     (BitSet implements the optional Unioner, Intersectioner, Differencer, and
+//     SymmetricDifferencer interfaces)
 type BitSet[M Integer] struct {
 	words []uint64 // bit j of words[i] covers universe index (start+i)*64 + j
 	start uint64   // universe word index of words[0]; meaningful only when len(words) > 0
@@ -63,7 +64,10 @@ type BitSet[M Integer] struct {
 
 var _ OrderedSet[int] = new(BitSet[int])
 var _ driver.Valuer = new(BitSet[int])
-var _ Algebra[int] = new(BitSet[int])
+var _ Unioner[int] = new(BitSet[int])
+var _ Intersectioner[int] = new(BitSet[int])
+var _ Differencer[int] = new(BitSet[int])
+var _ SymmetricDifferencer[int] = new(BitSet[int])
 
 // NewBitSet returns an empty *BitSet[M].
 func NewBitSet[M Integer]() *BitSet[M] {
@@ -454,7 +458,7 @@ func (s *BitSet[M]) Scan(src any) error {
 	return scanValue[M](src, s.Clear, s.UnmarshalJSON)
 }
 
-// Union implements Algebra: when other is also a *BitSet[M] it returns the word-wise union
+// Union implements Unioner: when other is also a *BitSet[M] it returns the word-wise union
 // (combining 64 elements per operation) and true; otherwise it returns nil and false. Prefer the
 // package-level Union function, which uses this automatically and handles the fallback.
 func (s *BitSet[M]) Union(other Set[M]) (Set[M], bool) {
@@ -465,7 +469,7 @@ func (s *BitSet[M]) Union(other Set[M]) (Set[M], bool) {
 	return s.union(o), true
 }
 
-// Intersection implements Algebra: when other is also a *BitSet[M] it returns the word-wise
+// Intersection implements Intersectioner: when other is also a *BitSet[M] it returns the word-wise
 // intersection and true; otherwise it returns nil and false. Prefer the package-level Intersection
 // function, which uses this automatically and handles the fallback.
 func (s *BitSet[M]) Intersection(other Set[M]) (Set[M], bool) {
@@ -476,7 +480,7 @@ func (s *BitSet[M]) Intersection(other Set[M]) (Set[M], bool) {
 	return s.intersect(o), true
 }
 
-// Difference implements Algebra: when other is also a *BitSet[M] it returns the word-wise
+// Difference implements Differencer: when other is also a *BitSet[M] it returns the word-wise
 // difference and true; otherwise it returns nil and false. Prefer the package-level Difference
 // function, which uses this automatically and handles the fallback.
 func (s *BitSet[M]) Difference(other Set[M]) (Set[M], bool) {
@@ -487,9 +491,9 @@ func (s *BitSet[M]) Difference(other Set[M]) (Set[M], bool) {
 	return s.difference(o), true
 }
 
-// SymmetricDifference implements Algebra: when other is also a *BitSet[M] it returns the word-wise
-// symmetric difference and true; otherwise it returns nil and false. Prefer the package-level
-// SymmetricDifference function, which uses this automatically and handles the fallback.
+// SymmetricDifference implements SymmetricDifferencer: when other is also a *BitSet[M] it returns
+// the word-wise symmetric difference and true; otherwise it returns nil and false. Prefer the
+// package-level SymmetricDifference function, which uses this automatically and handles the fallback.
 func (s *BitSet[M]) SymmetricDifference(other Set[M]) (Set[M], bool) {
 	o, ok := other.(*BitSet[M])
 	if !ok {
