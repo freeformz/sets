@@ -83,12 +83,41 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 	return n
 }
 
+// Algebra is an optional interface that Set implementations can implement to provide optimized
+// implementations of the package-level Union, Intersection, Difference, and SymmetricDifference
+// functions. Those functions check whether their first operand implements Algebra and, if so, call
+// the corresponding method; when the method reports false they fall back to the generic
+// element-wise implementation, so implementations only need to handle the operand types they can
+// actually accelerate (typically their own concrete type). BitSet implements Algebra with
+// word-wise operations.
+//
+// Implementations must not modify the receiver or the operand, and when reporting true must return
+// a new set, of the same underlying type as the receiver, holding the correct result.
+type Algebra[M comparable] interface {
+	// Union returns a new set with all elements from the receiver and other, or false if other
+	// cannot be handled more efficiently than the generic element-wise fallback.
+	Union(other Set[M]) (Set[M], bool)
+
+	// Intersection returns a new set with the elements common to the receiver and other, or false
+	// if other cannot be handled more efficiently than the generic element-wise fallback.
+	Intersection(other Set[M]) (Set[M], bool)
+
+	// Difference returns a new set with the elements of the receiver that are not in other, or
+	// false if other cannot be handled more efficiently than the generic element-wise fallback.
+	Difference(other Set[M]) (Set[M], bool)
+
+	// SymmetricDifference returns a new set with the elements that are in exactly one of the
+	// receiver and other, or false if other cannot be handled more efficiently than the generic
+	// element-wise fallback.
+	SymmetricDifference(other Set[M]) (Set[M], bool)
+}
+
 // Union of the two sets. Returns a new set (of the same underlying type as a) with all elements from both sets.
-// When both sets are BitSets of the same element type the union is computed word-wise.
+// If a implements Algebra, its optimized Union is used when it can handle b (e.g. two BitSets combine word-wise).
 func Union[K comparable](a, b Set[K]) Set[K] {
-	if bw, ok := a.(bitwiseSet); ok {
-		if c, ok := bw.bitwiseUnion(b); ok {
-			return c.(Set[K])
+	if al, ok := a.(Algebra[K]); ok {
+		if c, ok := al.Union(b); ok {
+			return c
 		}
 	}
 	c := a.Clone()
@@ -97,11 +126,11 @@ func Union[K comparable](a, b Set[K]) Set[K] {
 }
 
 // Intersection of the two sets. Returns a new set (of the same underlying type as a) with elements that are in both sets.
-// When both sets are BitSets of the same element type the intersection is computed word-wise.
+// If a implements Algebra, its optimized Intersection is used when it can handle b (e.g. two BitSets combine word-wise).
 func Intersection[K comparable](a, b Set[K]) Set[K] {
-	if bw, ok := a.(bitwiseSet); ok {
-		if c, ok := bw.bitwiseIntersection(b); ok {
-			return c.(Set[K])
+	if al, ok := a.(Algebra[K]); ok {
+		if c, ok := al.Intersection(b); ok {
+			return c
 		}
 	}
 	c := a.NewEmpty()
@@ -114,11 +143,11 @@ func Intersection[K comparable](a, b Set[K]) Set[K] {
 }
 
 // Difference of the two sets. Returns a new set (of the same underlying type as a) with elements that are in the first set but not in the second set.
-// When both sets are BitSets of the same element type the difference is computed word-wise.
+// If a implements Algebra, its optimized Difference is used when it can handle b (e.g. two BitSets combine word-wise).
 func Difference[K comparable](a, b Set[K]) Set[K] {
-	if bw, ok := a.(bitwiseSet); ok {
-		if c, ok := bw.bitwiseDifference(b); ok {
-			return c.(Set[K])
+	if al, ok := a.(Algebra[K]); ok {
+		if c, ok := al.Difference(b); ok {
+			return c
 		}
 	}
 	c := a.NewEmpty()
@@ -131,11 +160,11 @@ func Difference[K comparable](a, b Set[K]) Set[K] {
 }
 
 // SymmetricDifference of the two sets. Returns a new set (of the same underlying type as a) with elements that are not in both sets.
-// When both sets are BitSets of the same element type the symmetric difference is computed word-wise.
+// If a implements Algebra, its optimized SymmetricDifference is used when it can handle b (e.g. two BitSets combine word-wise).
 func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
-	if bw, ok := a.(bitwiseSet); ok {
-		if c, ok := bw.bitwiseSymmetricDifference(b); ok {
-			return c.(Set[K])
+	if al, ok := a.(Algebra[K]); ok {
+		if c, ok := al.SymmetricDifference(b); ok {
+			return c
 		}
 	}
 	c := a.NewEmpty()

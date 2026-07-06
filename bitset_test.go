@@ -474,3 +474,61 @@ func TestBitSet_HugeSpanPanics(t *testing.T) {
 	s := NewBitSetWith[uint64](0)
 	s.Add(math.MaxUint64)
 }
+
+// algebraStub is a minimal third-party-style Set whose Algebra methods return a sentinel,
+// proving the package-level functions honor Algebra implementations outside this package's
+// concrete types. The embedded Set provides the rest of the interface.
+type algebraStub struct {
+	Set[int]
+	sentinel Set[int]
+	optimize bool
+}
+
+func (a *algebraStub) Union(Set[int]) (Set[int], bool)               { return a.sentinel, a.optimize }
+func (a *algebraStub) Intersection(Set[int]) (Set[int], bool)        { return a.sentinel, a.optimize }
+func (a *algebraStub) Difference(Set[int]) (Set[int], bool)          { return a.sentinel, a.optimize }
+func (a *algebraStub) SymmetricDifference(Set[int]) (Set[int], bool) { return a.sentinel, a.optimize }
+
+// TestAlgebraOptionalInterface verifies that Union/Intersection/Difference/SymmetricDifference
+// use any first operand's Algebra implementation when it reports true, and fall back to the
+// generic element-wise path when it reports false.
+func TestAlgebraOptionalInterface(t *testing.T) {
+	t.Parallel()
+
+	sentinel := NewWith(42)
+	inner := NewWith(1, 2)
+	other := NewWith(2, 3)
+
+	ops := []struct {
+		name string
+		f    func(a, b Set[int]) Set[int]
+		want []int // generic-path result for inner vs other
+	}{
+		{"Union", Union[int], []int{1, 2, 3}},
+		{"Intersection", Intersection[int], []int{2}},
+		{"Difference", Difference[int], []int{1}},
+		{"SymmetricDifference", SymmetricDifference[int], []int{1, 3}},
+	}
+
+	for _, op := range ops {
+		optimized := op.f(&algebraStub{Set: inner, sentinel: sentinel, optimize: true}, other)
+		if optimized != sentinel {
+			t.Fatalf("%s: expected the Algebra result to be returned, got %v", op.name, Elements(optimized))
+		}
+
+		fallback := op.f(&algebraStub{Set: inner, sentinel: sentinel, optimize: false}, other)
+		if fallback == sentinel {
+			t.Fatalf("%s: Algebra reported false but its result was used", op.name)
+		}
+		got := Elements(fallback)
+		slices.Sort(got)
+		if !slices.Equal(got, op.want) {
+			t.Fatalf("%s fallback = %v, want %v", op.name, got, op.want)
+		}
+	}
+
+	// BitSet's Algebra methods report false for non-BitSet operands
+	if _, ok := NewBitSetWith(1).Union(NewWith(2)); ok {
+		t.Fatal("BitSet.Union(non-BitSet) must report false")
+	}
+}
