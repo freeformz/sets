@@ -194,6 +194,11 @@ corresponding package-level functions: each function checks its first operand fo
 generic element-wise path when the operand doesn't implement it or the method reports it cannot handle the other set.
 `BitSet` implements all four to combine two `BitSet`s word-wise.
 
+The methods return `(Set[M], bool)` rather than just `Set[M]` on purpose: the boolean lets an implementation decline a
+specific operand (typically anything but its own concrete type) so the generic fallback algorithm lives only in this
+package — implementations never reproduce it, and the worst outcome of declining is generic speed, never a wrong
+result. See the `Unioner` godoc for the full contract.
+
 ## TODOs
 
 * Ordered rapid tests that test the OrderedSet bits like the normal Set bits are tested.

@@ -85,14 +85,21 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 
 // Unioner is an optional interface that Set implementations can implement to provide an optimized
 // implementation of the package-level Union function, which checks whether its first operand
-// implements it. A Union method reporting false means the implementation cannot handle that
-// operand (typically anything but its own concrete type) and the caller falls back to the generic
-// element-wise path, so implementations only handle the operand types they can actually
-// accelerate. Implementations must not modify the receiver or the operand, and when reporting true
-// must return a new set, of the same underlying type as the receiver, holding the correct result.
-// The Intersectioner, Differencer, and SymmetricDifferencer interfaces work the same way for the
-// other set-algebra functions; implement whichever subset you can optimize. BitSet implements all
-// four with word-wise operations.
+// implements it. The Intersectioner, Differencer, and SymmetricDifferencer interfaces work the
+// same way for the other set-algebra functions; implement whichever subset you can optimize.
+// BitSet implements all four with word-wise operations.
+//
+// The boolean return is deliberate: implementing one of these interfaces opts a type into an
+// operation, and the boolean additionally lets each call decline a specific operand — typically
+// anything but the implementation's own concrete type (e.g. BitSet.Union reports false unless
+// other is also a *BitSet of the same element type). On false the caller runs the generic
+// element-wise algorithm, which therefore lives in exactly one place: implementations never
+// reproduce it, never risk getting it wrong, and a conservative implementation's worst outcome is
+// generic speed, not an incorrect result. Declining is always safe.
+//
+// Contract, shared by all four interfaces: the method must not modify the receiver or the operand,
+// and when reporting true it must return a new set, of the same underlying type as the receiver,
+// holding the correct result.
 type Unioner[M comparable] interface {
 	// Union returns a new set with all elements from the receiver and other, or false if other
 	// cannot be handled more efficiently than the generic element-wise fallback.
