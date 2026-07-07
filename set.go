@@ -279,9 +279,10 @@ func Iter2[K comparable](seq iter.Seq[K]) func(func(i int, k K) bool) {
 // storage (SortedSet in O(1); BitSet from the outermost set bit of its span).
 //
 // The boolean return is deliberate: reporting false — whether because the set is empty or because
-// the receiver cannot answer efficiently — makes the caller fall back to the generic O(N)
-// iteration, so declining is always safe. Contract, shared by both interfaces: the method must not
-// modify the receiver, and when reporting true it must return the correct extreme element.
+// the receiver cannot answer efficiently — makes the caller use the generic path (and thus, for
+// Max/Min, panic on empty sets), so declining is always safe. Contract, shared by both interfaces:
+// the method must not modify the receiver, and when reporting true it must return the correct
+// extreme element.
 type Maxer[M cmp.Ordered] interface {
 	// Max returns the largest element in the set, or false if the set is empty or the maximum
 	// cannot be determined more efficiently than the generic iteration fallback.
