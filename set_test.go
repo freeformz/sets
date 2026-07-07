@@ -23,6 +23,17 @@ type SetStateMachine struct {
 	set    Set[int]
 	stateI map[int]int
 	stateO []int
+	intGen *rapid.Generator[int] // value generator; nil means the full-range rapid.Int()
+}
+
+// int returns the generator used to draw element values. Implementations whose
+// memory use depends on the value span (e.g. BitSet) set intGen to a bounded
+// range; everything else uses the full int range.
+func (sm *SetStateMachine) int() *rapid.Generator[int] {
+	if sm.intGen == nil {
+		return rapid.Int()
+	}
+	return sm.intGen
 }
 
 func TestMap(t *testing.T) {
@@ -86,7 +97,7 @@ func TestLockedOrdered(t *testing.T) {
 }
 
 func (sm *SetStateMachine) Add(t *rapid.T) {
-	i := rapid.Int().Draw(t, "Int")
+	i := sm.int().Draw(t, "Int")
 	_, exists := sm.stateI[i]
 	if sm.set.Add(i) == exists {
 		t.Fatalf("expected %d to exist: %v", i, exists)
@@ -95,7 +106,7 @@ func (sm *SetStateMachine) Add(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Remove(t *rapid.T) {
-	i := rapid.Int().Draw(t, "Int")
+	i := sm.int().Draw(t, "Int")
 	_, exists := sm.stateI[i]
 	if sm.set.Remove(i) != exists {
 		t.Fatalf("expected %v to exist: %v", i, exists)
@@ -104,7 +115,7 @@ func (sm *SetStateMachine) Remove(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Contains(t *rapid.T) {
-	i := rapid.Int().Draw(t, "Int")
+	i := sm.int().Draw(t, "Int")
 	_, exists := sm.stateI[i]
 	if got := exists != sm.set.Contains(i); got {
 		t.Fatalf("expected %v to exist: %v", i, got)
@@ -205,7 +216,7 @@ func (sm *SetStateMachine) remove(t *rapid.T, i int) {
 }
 
 func (sm *SetStateMachine) AddSeq(t *rapid.T) {
-	values := rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Seq Values")
+	values := rapid.SliceOfNDistinct(sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Seq Values")
 	n := AppendSeq(sm.set, slices.Values(values))
 	if n != len(values) {
 		t.Fatalf("expected %d elements to be added, got %d", len(values), n)
@@ -231,7 +242,7 @@ func (sm *SetStateMachine) RemoveSeq(t *rapid.T) {
 
 func (sm *SetStateMachine) Union(t *rapid.T) {
 	other := sm.set.NewEmpty()
-	AppendSeq(other, slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Union Values")))
+	AppendSeq(other, slices.Values(rapid.SliceOfN(sm.int(), 0, 20).Draw(t, "Union Values")))
 	for i := range other.Iterator {
 		sm.add(t, i)
 	}
@@ -240,7 +251,7 @@ func (sm *SetStateMachine) Union(t *rapid.T) {
 
 func (sm *SetStateMachine) Difference(t *rapid.T) {
 	other := sm.set.NewEmpty()
-	AppendSeq(other, slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Difference Values")))
+	AppendSeq(other, slices.Values(rapid.SliceOfN(sm.int(), 0, 20).Draw(t, "Difference Values")))
 	for i := range slices.Values(slices.Collect(maps.Keys(sm.stateI))) {
 		if other.Contains(i) {
 			sm.remove(t, i)
@@ -251,7 +262,7 @@ func (sm *SetStateMachine) Difference(t *rapid.T) {
 
 func (sm *SetStateMachine) SymmetricDifference(t *rapid.T) {
 	other := sm.set.NewEmpty()
-	AppendSeq(other, slices.Values(rapid.SliceOfN(rapid.Int(), 0, 20).Draw(t, "Symmetric Difference Values")))
+	AppendSeq(other, slices.Values(rapid.SliceOfN(sm.int(), 0, 20).Draw(t, "Symmetric Difference Values")))
 	for i := range other.Iterator {
 		if _, exists := sm.stateI[i]; exists {
 			sm.remove(t, i)
@@ -289,7 +300,7 @@ func (sm *SetStateMachine) Equal(t *rapid.T) {
 	if !Equal(sm.set, other) {
 		t.Fatalf("expected %v to be equal to %v", Elements(sm.set), Elements(other))
 	}
-	other.Add(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value"))
+	other.Add(sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value"))
 	if Equal(sm.set, other) {
 		t.Fatalf("expected %v to be different from %v", Elements(sm.set), Elements(other))
 	}
@@ -323,7 +334,7 @@ func (sm *SetStateMachine) ContainsSeq(t *rapid.T) {
 		t.Fatalf("expected %v to be a subset of %v", values, Elements(sm.set))
 	}
 	// items not in the set
-	values = rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Seq Values")
+	values = rapid.SliceOfNDistinct(sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Seq Values")
 	if ContainsSeq(sm.set, slices.Values(values)) {
 		t.Fatalf("expected %v to not be a subset of %v", values, Elements(sm.set))
 	}
@@ -334,7 +345,7 @@ func (sm *SetStateMachine) Disjoint(t *rapid.T) {
 		t.Skip("no elements to check for disjoint")
 	}
 	other := sm.set.NewEmpty()
-	AppendSeq(other, slices.Values(rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Disjoint Values")))
+	AppendSeq(other, slices.Values(rapid.SliceOfNDistinct(sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 20, func(i int) int { return i }).Draw(t, "Disjoint Values")))
 	if !Disjoint(sm.set, other) {
 		t.Fatalf("expected %v and %v to be disjoint", Elements(sm.set), Elements(other))
 	}
@@ -390,7 +401,7 @@ func (sm *SetStateMachine) Check(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) Any(t *rapid.T) {
-	threshold := rapid.Int().Draw(t, "Threshold")
+	threshold := sm.int().Draw(t, "Threshold")
 	expected := false
 	for k := range sm.stateI {
 		if k > threshold {
@@ -405,7 +416,7 @@ func (sm *SetStateMachine) Any(t *rapid.T) {
 }
 
 func (sm *SetStateMachine) All(t *rapid.T) {
-	threshold := rapid.Int().Draw(t, "Threshold")
+	threshold := sm.int().Draw(t, "Threshold")
 	expected := true
 	for k := range sm.stateI {
 		if k <= threshold {
@@ -433,7 +444,7 @@ func (sm *SetStateMachine) ContainsAllAction(t *rapid.T) {
 		t.Fatalf("expected ContainsAll to be true for %v", values)
 	}
 	// add an element not in the set
-	extra := rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value")
+	extra := sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value")
 	values = append(values, extra)
 	if ContainsAll(sm.set, values...) {
 		t.Fatalf("expected ContainsAll to be false for %v", values)
@@ -449,12 +460,12 @@ func (sm *SetStateMachine) ContainsAnyAction(t *rapid.T) {
 	}
 	// at least one element in the set
 	elem := rapid.SampledFrom(slices.Collect(sm.set.Iterator)).Draw(t, "ContainsAny Value")
-	extra := rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value")
+	extra := sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }).Draw(t, "Extra Value")
 	if !ContainsAny(sm.set, elem, extra) {
 		t.Fatalf("expected ContainsAny to be true for %v", []int{elem, extra})
 	}
 	// all elements not in the set
-	notIn := rapid.SliceOfNDistinct(rapid.Int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 5, func(i int) int { return i }).Draw(t, "NotIn Values")
+	notIn := rapid.SliceOfNDistinct(sm.int().Filter(func(i int) bool { return !sm.set.Contains(i) }), 1, 5, func(i int) int { return i }).Draw(t, "NotIn Values")
 	if ContainsAny(sm.set, notIn...) {
 		t.Fatalf("expected ContainsAny to be false for %v", notIn)
 	}

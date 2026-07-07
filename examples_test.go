@@ -1002,3 +1002,65 @@ func ExampleSortedSet_Range() {
 	// 30
 	// 40
 }
+
+func ExampleNewBitSet() {
+	set := NewBitSet[int]()
+	set.Add(30)
+	set.Add(-10)
+	set.Add(20)
+	set.Add(20)
+	fmt.Println(set.Cardinality())
+
+	for v := range set.Iterator {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3
+	// -10
+	// 20
+	// 30
+}
+
+func ExampleNewBitSetWith() {
+	set := NewBitSetWith(30, -10, 20, 20)
+	fmt.Println(set.Cardinality())
+
+	for v := range set.Iterator {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3
+	// -10
+	// 20
+	// 30
+}
+
+func ExampleNewBitSetFrom() {
+	set := NewBitSetFrom(slices.Values([]uint16{443, 80, 8080, 80}))
+	fmt.Println(set.Cardinality())
+
+	for v := range set.Iterator {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 3
+	// 80
+	// 443
+	// 8080
+}
+
+func ExampleBitSet_Range() {
+	set := NewBitSetWith(50, 10, 40, 20, 30)
+
+	for v := range set.Range(15, 40) {
+		fmt.Println(v)
+	}
+
+	// Output:
+	// 20
+	// 30
+	// 40
+}

@@ -28,6 +28,7 @@ go get github.com/freeformz/sets
   * `NewOrdered()` -> ordered set (uses a map for indexes and a slice for order);
   * `NewLockedOrdered()` -> ordered set that is concurrency safe;
   * `NewSortedSet()` -> always sorted set backed by a single sorted slice. O(log n) `Contains`, O(1) `At`, range queries via `Range(lo, hi)`, and lower memory use, at the cost of O(n) `Add`/`Remove`. Best for read-heavy workloads. Wrap with `NewLockedOrderedWrapping(NewSortedSet[int]())` to make it concurrency safe.
+  * `NewBitSet()` -> always sorted set for integer element types, backed by a dense bitmap. O(1) `Add`/`Remove`/`Contains`, and `Union`/`Intersection`/`Difference`/`SymmetricDifference` between two `BitSet`s run word-wise (64 elements per CPU op). **Memory is proportional to the span (max − min) of the elements, not the count** — S/8 bytes for a span of S values. That's tiny for dense, bounded domains (IDs, ports, enum values: a full uint16 universe is 8 KiB) but pathological for sparse far-apart values (`Add(0)` then `Add(1<<40)` needs ~128 GiB and panics). `Reserve(lo, hi)` preallocates, `Compact()` releases memory after removals, `Clear()` drops the backing array. Wrap with `NewLockedOrderedWrapping(NewBitSet[int]())` to make it concurrency safe.
 * `sets` package functions align with standard lib packages like `slices` and `maps`.
 * Implement as much as possible as package functions, not Set methods.
 * Exhaustive unit tests via [rapid](https://github.com/flyingmutant/rapid).
@@ -103,7 +104,7 @@ These helpers work on all OrderedSet types.
 
 ## Benchmarks
 
-Benchmarks cover all 6 set implementations (`Map`, `SyncMap`, `Locked`, `Ordered`, `SortedSet`, `LockedOrdered`) with both `int` and `string` element types at sizes from 10 to 1,000,000.
+Benchmarks cover all 7 set implementations (`Map`, `SyncMap`, `Locked`, `Ordered`, `SortedSet`, `LockedOrdered`, `BitSet`) with both `int` and `string` element types at sizes from 10 to 1,000,000. `BitSet` is integer-only, so it appears only in the `int` results. Note that the benchmark elements are the dense range 0..N-1 — `BitSet`'s best case (span == count); sparse domains shift the memory comparison, see the `BitSet` godoc.
 
 ### Running Benchmarks
 
@@ -186,6 +187,17 @@ Both sets have N elements with 50% overlap.
 
 You can implement your own set types as long as they conform to the interfaces and can use the package level functions
 as they do not rely on any internal implementation details.
+
+Custom implementations can also implement the optional single-method interfaces `Unioner[M]`, `Intersectioner[M]`,
+`Differencer[M]`, and `SymmetricDifferencer[M]` — in any combination — to provide optimized implementations of the
+corresponding package-level functions: each function checks its first operand for its interface and falls back to the
+generic element-wise path when the operand doesn't implement it or the method reports it cannot handle the other set.
+`BitSet` implements all four to combine two `BitSet`s word-wise.
+
+The methods return `(Set[M], bool)` rather than just `Set[M]` on purpose: the boolean lets an implementation decline a
+specific operand (typically anything but its own concrete type) so the generic fallback algorithm lives only in this
+package — implementations never reproduce it, and the worst outcome of declining is generic speed, never a wrong
+result. See the `Unioner` godoc for the full contract.
 
 ## TODOs
 

@@ -83,15 +83,75 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 	return n
 }
 
+// Unioner is an optional interface that Set implementations can implement to provide an optimized
+// implementation of the package-level Union function, which checks whether its first operand
+// implements it. The Intersectioner, Differencer, and SymmetricDifferencer interfaces work the
+// same way for the other set-algebra functions; implement whichever subset you can optimize.
+// BitSet implements all four with word-wise operations.
+//
+// The boolean return is deliberate: implementing one of these interfaces opts a type into an
+// operation, and the boolean additionally lets each call decline a specific operand — typically
+// anything but the implementation's own concrete type (e.g. BitSet.Union reports false unless
+// other is also a *BitSet of the same element type). On false the caller runs the generic
+// element-wise algorithm, which therefore lives in exactly one place: implementations never
+// reproduce it, never risk getting it wrong, and a conservative implementation's worst outcome is
+// generic speed, not an incorrect result. Declining is always safe.
+//
+// Contract, shared by all four interfaces: the method must not modify the receiver or the operand,
+// and when reporting true it must return a new set, of the same underlying type as the receiver,
+// holding the correct result.
+type Unioner[M comparable] interface {
+	// Union returns a new set with all elements from the receiver and other, or false if other
+	// cannot be handled more efficiently than the generic element-wise fallback.
+	Union(other Set[M]) (Set[M], bool)
+}
+
+// Intersectioner is an optional interface providing an optimized Intersection; see Unioner for the
+// contract shared by the set-algebra optimization interfaces.
+type Intersectioner[M comparable] interface {
+	// Intersection returns a new set with the elements common to the receiver and other, or false
+	// if other cannot be handled more efficiently than the generic element-wise fallback.
+	Intersection(other Set[M]) (Set[M], bool)
+}
+
+// Differencer is an optional interface providing an optimized Difference; see Unioner for the
+// contract shared by the set-algebra optimization interfaces.
+type Differencer[M comparable] interface {
+	// Difference returns a new set with the elements of the receiver that are not in other, or
+	// false if other cannot be handled more efficiently than the generic element-wise fallback.
+	Difference(other Set[M]) (Set[M], bool)
+}
+
+// SymmetricDifferencer is an optional interface providing an optimized SymmetricDifference; see
+// Unioner for the contract shared by the set-algebra optimization interfaces.
+type SymmetricDifferencer[M comparable] interface {
+	// SymmetricDifference returns a new set with the elements that are in exactly one of the
+	// receiver and other, or false if other cannot be handled more efficiently than the generic
+	// element-wise fallback.
+	SymmetricDifference(other Set[M]) (Set[M], bool)
+}
+
 // Union of the two sets. Returns a new set (of the same underlying type as a) with all elements from both sets.
+// If a implements Unioner, its optimized Union is used when it can handle b (e.g. two BitSets combine word-wise).
 func Union[K comparable](a, b Set[K]) Set[K] {
+	if u, ok := a.(Unioner[K]); ok {
+		if c, ok := u.Union(b); ok {
+			return c
+		}
+	}
 	c := a.Clone()
 	AppendSeq(c, b.Iterator)
 	return c
 }
 
 // Intersection of the two sets. Returns a new set (of the same underlying type as a) with elements that are in both sets.
+// If a implements Intersectioner, its optimized Intersection is used when it can handle b (e.g. two BitSets combine word-wise).
 func Intersection[K comparable](a, b Set[K]) Set[K] {
+	if i, ok := a.(Intersectioner[K]); ok {
+		if c, ok := i.Intersection(b); ok {
+			return c
+		}
+	}
 	c := a.NewEmpty()
 	for k := range a.Iterator {
 		if b.Contains(k) {
@@ -102,7 +162,13 @@ func Intersection[K comparable](a, b Set[K]) Set[K] {
 }
 
 // Difference of the two sets. Returns a new set (of the same underlying type as a) with elements that are in the first set but not in the second set.
+// If a implements Differencer, its optimized Difference is used when it can handle b (e.g. two BitSets combine word-wise).
 func Difference[K comparable](a, b Set[K]) Set[K] {
+	if d, ok := a.(Differencer[K]); ok {
+		if c, ok := d.Difference(b); ok {
+			return c
+		}
+	}
 	c := a.NewEmpty()
 	for k := range a.Iterator {
 		if !b.Contains(k) {
@@ -113,7 +179,13 @@ func Difference[K comparable](a, b Set[K]) Set[K] {
 }
 
 // SymmetricDifference of the two sets. Returns a new set (of the same underlying type as a) with elements that are not in both sets.
+// If a implements SymmetricDifferencer, its optimized SymmetricDifference is used when it can handle b (e.g. two BitSets combine word-wise).
 func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
+	if sd, ok := a.(SymmetricDifferencer[K]); ok {
+		if c, ok := sd.SymmetricDifference(b); ok {
+			return c
+		}
+	}
 	c := a.NewEmpty()
 	for k := range a.Iterator {
 		if !b.Contains(k) {

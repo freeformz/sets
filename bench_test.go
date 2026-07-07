@@ -43,7 +43,7 @@ func genStrings(n int) []string {
 type benchImpl struct {
 	name   string
 	newInt func() Set[int]
-	newStr func() Set[string]
+	newStr func() Set[string] // nil for integer-only implementations, which skip the string benchmarks
 }
 
 var benchImpls = []benchImpl{
@@ -53,6 +53,8 @@ var benchImpls = []benchImpl{
 	{"Ordered", func() Set[int] { return NewOrdered[int]() }, func() Set[string] { return NewOrdered[string]() }},
 	{"SortedSet", func() Set[int] { return NewSortedSet[int]() }, func() Set[string] { return NewSortedSet[string]() }},
 	{"LockedOrdered", func() Set[int] { return NewLockedOrdered[int]() }, func() Set[string] { return NewLockedOrdered[string]() }},
+	// genInts produces the dense 0..N-1 domain, which is BitSet's best case: span == count.
+	{"BitSet", func() Set[int] { return NewBitSet[int]() }, nil},
 }
 
 // --- Generic runners ---
@@ -66,7 +68,9 @@ func benchEach(
 	for _, impl := range benchImpls {
 		b.Run(impl.name, func(b *testing.B) {
 			forEachSize(b, "int", impl.newInt, genInts, intFn)
-			forEachSize(b, "string", impl.newStr, genStrings, strFn)
+			if impl.newStr != nil {
+				forEachSize(b, "string", impl.newStr, genStrings, strFn)
+			}
 		})
 	}
 }
@@ -96,7 +100,9 @@ func benchEachTwoSet(
 	for _, impl := range benchImpls {
 		b.Run(impl.name, func(b *testing.B) {
 			forEachSizeTwoSet(b, "int", impl.newInt, genInts, intOp)
-			forEachSizeTwoSet(b, "string", impl.newStr, genStrings, strOp)
+			if impl.newStr != nil {
+				forEachSizeTwoSet(b, "string", impl.newStr, genStrings, strOp)
+			}
 		})
 	}
 }
