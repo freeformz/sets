@@ -300,13 +300,13 @@ type Minner[M cmp.Ordered] interface {
 // If the set implements Maxer, its optimized Max is used when it can answer (e.g. SortedSet
 // answers in O(1) from the end of its sorted storage).
 func Max[K cmp.Ordered](s Set[K]) K {
-	if s.Cardinality() == 0 {
-		panic("empty set")
-	}
 	if mx, ok := s.(Maxer[K]); ok {
 		if m, ok := mx.Max(); ok {
 			return m
 		}
+	}
+	if s.Cardinality() == 0 {
+		panic("empty set")
 	}
 
 	var mx K
