@@ -479,3 +479,84 @@ func TestSortedSet_From(t *testing.T) {
 		t.Fatalf("NewSortedSetFrom(empty) has %d elements", empty.Cardinality())
 	}
 }
+
+// TestSortedSet_MergeOps differentially tests the merge-based set operations against the generic
+// Map-based results, for both pure-SortedSet operands (fast path) and mixed operands (generic
+// fallback).
+func TestSortedSet_MergeOps(t *testing.T) {
+	t.Parallel()
+
+	ops := []struct {
+		name string
+		f    func(a, b Set[int]) Set[int]
+	}{
+		{"Union", Union[int]},
+		{"Intersection", Intersection[int]},
+		{"Difference", Difference[int]},
+		{"SymmetricDifference", SymmetricDifference[int]},
+	}
+
+	rapid.Check(t, func(t *rapid.T) {
+		av := rapid.SliceOfN(rapid.IntRange(-512, 512), 0, 100).Draw(t, "A")
+		bv := rapid.SliceOfN(rapid.IntRange(-512, 512), 0, 100).Draw(t, "B")
+		as, bs := NewSortedSetWith(av...), NewSortedSetWith(bv...)
+		am, bm := NewWith(av...), NewWith(bv...)
+
+		for _, op := range ops {
+			want := op.f(am, bm)
+
+			got := op.f(as, bs)
+			ss, ok := got.(*SortedSet[int])
+			if !ok {
+				t.Fatalf("%s(sorted, sorted) returned %T, want *SortedSet[int]", op.name, got)
+			}
+			if !slices.IsSorted(ss.el) {
+				t.Fatalf("%s(sorted, sorted) result is not sorted: %v", op.name, ss.el)
+			}
+			if !Equal(got, want) {
+				t.Fatalf("%s(sorted, sorted) = %v, want %v", op.name, Elements(got), Elements(want))
+			}
+
+			// mixed operands fall back to the generic path
+			if got := op.f(as, bm); !Equal(got, want) {
+				t.Fatalf("%s(sorted, map) = %v, want %v", op.name, Elements(got), Elements(want))
+			}
+			if got := op.f(am, bs); !Equal(got, want) {
+				t.Fatalf("%s(map, sorted) = %v, want %v", op.name, Elements(got), Elements(want))
+			}
+		}
+	})
+
+	// SortedSet's optimization methods report false for non-SortedSet operands
+	if _, ok := NewSortedSetWith(1).Union(NewWith(2)); ok {
+		t.Fatal("SortedSet.Union(non-SortedSet) must report false")
+	}
+}
+
+func TestSortedSet_MaxMin(t *testing.T) {
+	t.Parallel()
+
+	s := NewSortedSetWith(5, -3, 12, 7)
+	if v, ok := s.Max(); !ok || v != 12 {
+		t.Fatalf("Max() = %d, %v; want 12, true", v, ok)
+	}
+	if v, ok := s.Min(); !ok || v != -3 {
+		t.Fatalf("Min() = %d, %v; want -3, true", v, ok)
+	}
+
+	// the package-level functions use the fast paths
+	if got := Max(Set[int](s)); got != 12 {
+		t.Fatalf("Max = %d, want 12", got)
+	}
+	if got := Min(Set[int](s)); got != -3 {
+		t.Fatalf("Min = %d, want -3", got)
+	}
+
+	empty := NewSortedSet[int]()
+	if _, ok := empty.Max(); ok {
+		t.Fatal("Max on an empty set: expected ok=false")
+	}
+	if _, ok := empty.Min(); ok {
+		t.Fatal("Min on an empty set: expected ok=false")
+	}
+}

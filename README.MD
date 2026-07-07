@@ -192,12 +192,18 @@ Custom implementations can also implement the optional single-method interfaces 
 `Differencer[M]`, and `SymmetricDifferencer[M]` — in any combination — to provide optimized implementations of the
 corresponding package-level functions: each function checks its first operand for its interface and falls back to the
 generic element-wise path when the operand doesn't implement it or the method reports it cannot handle the other set.
-`BitSet` implements all four to combine two `BitSet`s word-wise.
+`BitSet` implements all four to combine two `BitSet`s word-wise; `SortedSet` implements all four to combine two
+`SortedSet`s with a single linear merge of their sorted slices.
 
 The methods return `(Set[M], bool)` rather than just `Set[M]` on purpose: the boolean lets an implementation decline a
 specific operand (typically anything but its own concrete type) so the generic fallback algorithm lives only in this
 package — implementations never reproduce it, and the worst outcome of declining is generic speed, never a wrong
 result. See the `Unioner` godoc for the full contract.
+
+The same pattern accelerates `Max` and `Min` via the optional `Maxer[M]`/`Minner[M]` interfaces: implementations that
+can find an extreme element without iterating (both `SortedSet` and `BitSet` answer from the ends of their storage)
+implement them, and the package-level functions fall back to the generic O(n) iteration when the method reports false.
+See the `Maxer` godoc for the contract.
 
 ## TODOs
 

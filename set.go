@@ -87,7 +87,8 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 // implementation of the package-level Union function, which checks whether its first operand
 // implements it. The Intersectioner, Differencer, and SymmetricDifferencer interfaces work the
 // same way for the other set-algebra functions; implement whichever subset you can optimize.
-// BitSet implements all four with word-wise operations.
+// BitSet implements all four with word-wise operations; SortedSet implements all four with a
+// single linear merge of the two sorted backing slices.
 //
 // The boolean return is deliberate: implementing one of these interfaces opts a type into an
 // operation, and the boolean additionally lets each call decline a specific operand — typically
@@ -271,10 +272,41 @@ func Iter2[K comparable](seq iter.Seq[K]) func(func(i int, k K) bool) {
 	}
 }
 
+// Maxer is an optional interface that Set implementations can implement to provide an optimized
+// implementation of the package-level Max function, which checks whether its argument implements
+// it; Minner works the same way for Min. Implement them when an extreme element can be found
+// without iterating every element — always-sorted implementations answer from the ends of their
+// storage (SortedSet in O(1); BitSet from the outermost set bit of its span).
+//
+// The boolean return is deliberate: reporting false — whether because the set is empty or because
+// the receiver cannot answer efficiently — makes the caller fall back to the generic O(N)
+// iteration, so declining is always safe. Contract, shared by both interfaces: the method must not
+// modify the receiver, and when reporting true it must return the correct extreme element.
+type Maxer[M cmp.Ordered] interface {
+	// Max returns the largest element in the set, or false if the set is empty or the maximum
+	// cannot be determined more efficiently than the generic iteration fallback.
+	Max() (M, bool)
+}
+
+// Minner is an optional interface providing an optimized Min; see Maxer for the contract shared by
+// the two extreme-element optimization interfaces.
+type Minner[M cmp.Ordered] interface {
+	// Min returns the smallest element in the set, or false if the set is empty or the minimum
+	// cannot be determined more efficiently than the generic iteration fallback.
+	Min() (M, bool)
+}
+
 // Max element in the set. Set must be a set of cmp.Ordered elements. Panics if the set is empty.
+// If the set implements Maxer, its optimized Max is used when it can answer (e.g. SortedSet
+// answers in O(1) from the end of its sorted storage).
 func Max[K cmp.Ordered](s Set[K]) K {
 	if s.Cardinality() == 0 {
 		panic("empty set")
+	}
+	if mx, ok := s.(Maxer[K]); ok {
+		if m, ok := mx.Max(); ok {
+			return m
+		}
 	}
 
 	var mx K
@@ -289,9 +321,16 @@ func Max[K cmp.Ordered](s Set[K]) K {
 }
 
 // Min element in the set. Set must be a set of cmp.Ordered elements. Panics if the set is empty.
+// If the set implements Minner, its optimized Min is used when it can answer (e.g. SortedSet
+// answers in O(1) from the start of its sorted storage).
 func Min[K cmp.Ordered](s Set[K]) K {
 	if s.Cardinality() == 0 {
 		panic("empty set")
+	}
+	if mn, ok := s.(Minner[K]); ok {
+		if m, ok := mn.Min(); ok {
+			return m
+		}
 	}
 
 	var mn K

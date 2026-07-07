@@ -52,6 +52,8 @@ type Integer interface {
 //   - Contains: O(1)
 //   - At, Index: O(W) (popcount scan)
 //   - Iterator: O(W + N)
+//   - Max, Min: O(1) when the span edges are occupied; O(W) worst case, when Removes have
+//     left zero words at the span edges
 //   - Union, Intersection, Difference, SymmetricDifference with another BitSet
 //     of the same element type: O(W) word-wise, via the package-level functions
 //     (BitSet implements the optional Unioner, Intersectioner, Differencer, and
@@ -68,6 +70,8 @@ var _ Unioner[int] = new(BitSet[int])
 var _ Intersectioner[int] = new(BitSet[int])
 var _ Differencer[int] = new(BitSet[int])
 var _ SymmetricDifferencer[int] = new(BitSet[int])
+var _ Maxer[int] = new(BitSet[int])
+var _ Minner[int] = new(BitSet[int])
 
 // NewBitSet returns an empty *BitSet[M].
 func NewBitSet[M Integer]() *BitSet[M] {
@@ -500,6 +504,34 @@ func (s *BitSet[M]) SymmetricDifference(other Set[M]) (Set[M], bool) {
 		return nil, false
 	}
 	return s.symmetricDifference(o), true
+}
+
+// Max implements Maxer: it returns the largest element by scanning backwards from the end of the
+// span for the highest set bit. The second return value is false if the set is empty. Prefer the
+// package-level Max function, which uses this automatically.
+func (s *BitSet[M]) Max() (M, bool) {
+	for i := len(s.words) - 1; i >= 0; i-- {
+		if w := s.words[i]; w != 0 {
+			b := 63 - bits.LeadingZeros64(w)
+			return fromUniverse[M]((s.start+uint64(i))<<6 | uint64(b)), true
+		}
+	}
+	var zero M
+	return zero, false
+}
+
+// Min implements Minner: it returns the smallest element by scanning forwards from the start of
+// the span for the lowest set bit. The second return value is false if the set is empty. Prefer
+// the package-level Min function, which uses this automatically.
+func (s *BitSet[M]) Min() (M, bool) {
+	for i, w := range s.words {
+		if w != 0 {
+			b := bits.TrailingZeros64(w)
+			return fromUniverse[M]((s.start+uint64(i))<<6 | uint64(b)), true
+		}
+	}
+	var zero M
+	return zero, false
 }
 
 func (s *BitSet[M]) recount() {
