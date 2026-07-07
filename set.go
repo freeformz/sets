@@ -324,13 +324,13 @@ func Max[K cmp.Ordered](s Set[K]) K {
 // If the set implements Minner, its optimized Min is used when it can answer (e.g. SortedSet
 // answers in O(1) from the start of its sorted storage).
 func Min[K cmp.Ordered](s Set[K]) K {
-	if s.Cardinality() == 0 {
-		panic("empty set")
-	}
 	if mn, ok := s.(Minner[K]); ok {
 		if m, ok := mn.Min(); ok {
 			return m
 		}
+	}
+	if s.Cardinality() == 0 {
+		panic("empty set")
 	}
 
 	var mn K
