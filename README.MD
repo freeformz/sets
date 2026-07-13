@@ -211,6 +211,12 @@ interfaces the same way (`Superset` is `Subset` with the operands swapped, so it
 short-circuiting scans of the two sorted slices, `BitSet` with word-wise comparisons. See the `Equaler` godoc for the
 contract.
 
+The locked wrappers (`Locked` and `LockedOrdered`) delegate every optional interface to their inner set under the read
+lock, so wrapping an optimizable set keeps its fast paths. When the other operand is itself a locked wrapper it is
+unwrapped with a non-blocking lock attempt; under contention the delegation declines into the generic path (which locks
+one set at a time), so delegation can never deadlock. Delegated set-algebra results come back wrapped, so they stay
+safe for concurrent use.
+
 ## TODOs
 
 * Ordered rapid tests that test the OrderedSet bits like the normal Set bits are tested.
