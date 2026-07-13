@@ -31,11 +31,11 @@ CI runs checks (staticcheck, vet) on Ubuntu and tests (with `-race`) across Ubun
 **Implementations**:
 - `Map[M]` (`map.go`) — default map-based set, created via `New()`
 - `SyncMap[M]` (`sync.go`) — `sync.Map`-based, concurrent-safe via `NewSyncMap()`
-- `Locked[M]` (`locked.go`) — RWMutex wrapper around a Set via `NewLocked()`
+- `Locked[M]` (`locked.go`) — RWMutex wrapper around a Set via `NewLocked()`. Delegates all optional optimization interfaces to the inner set under the read lock; operand wrapper locks are only try-acquired (declining to the generic path on contention), so delegation cannot deadlock
 - `Ordered[M]` (`ordered.go`) — insertion-ordered set via `NewOrdered()`
 - `SortedSet[M]` (`sorted.go`) — always-sorted set backed by a sorted slice via `NewSortedSet()`; read-optimized (O(log n) Contains, O(1) At, `Range(lo, hi)` queries), O(n) Add/Remove. Implements the four set-algebra optimization interfaces (O(n+m) linear merge when both operands are SortedSets), `Maxer`/`Minner` (O(1) from the slice ends), and the three predicate optimization interfaces (`Equaler`/`Disjointer`/`Subsetter`, short-circuiting scans)
 - `BitSet[M]` (`bitset.go`) — always-sorted dense-bitmap set for integer element types (`Integer` constraint, not `comparable`) via `NewBitSet()`; O(1) Add/Remove/Contains and word-wise set ops between two BitSets (via the exported optional single-method interfaces `Unioner[M]`/`Intersectioner[M]`/`Differencer[M]`/`SymmetricDifferencer[M]` in `set.go`, which any implementation can adopt in any combination to accelerate the package-level algebra functions; the optional `Maxer[M]`/`Minner[M]` interfaces accelerate package-level `Max`/`Min` the same way, and `Equaler[M]`/`Disjointer[M]`/`Subsetter[M]` accelerate the `Equal`/`Disjoint`/`Subset`/`Superset` predicates). Memory ∝ element span, not count — see the type's godoc for the tradeoffs; `Reserve`/`Compact` manage the backing array
-- `LockedOrdered[M]` (`locked_ordered.go`) — RWMutex wrapper around OrderedSet via `NewLockedOrdered()`
+- `LockedOrdered[M]` (`locked_ordered.go`) — RWMutex wrapper around OrderedSet via `NewLockedOrdered()`; same optional-interface delegation as `Locked`
 
 **Design philosophy**: Functionality lives in package-level generic functions (in `set.go` and `ordered_set.go`), not methods. This aligns with stdlib `slices`/`maps` style. Locked types use composition, wrapping an inner set with mutex protection.
 

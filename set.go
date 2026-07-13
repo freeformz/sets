@@ -88,7 +88,10 @@ func RemoveSeq[K comparable](s Set[K], seq iter.Seq[K]) int {
 // implements it. The Intersectioner, Differencer, and SymmetricDifferencer interfaces work the
 // same way for the other set-algebra functions; implement whichever subset you can optimize.
 // BitSet implements all four with word-wise operations; SortedSet implements all four with a
-// single linear merge of the two sorted backing slices.
+// single linear merge of the two sorted backing slices. The locked wrappers (Locked and
+// LockedOrdered) delegate every optional optimization interface — these four, the predicates, and
+// Maxer/Minner — to their inner set under the read lock, so wrapping an optimizable set keeps its
+// fast paths.
 //
 // The boolean return is deliberate: implementing one of these interfaces opts a type into an
 // operation, and the boolean additionally lets each call decline a specific operand — typically
