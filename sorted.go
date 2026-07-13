@@ -26,6 +26,11 @@ import (
 //   - At: O(1)
 //   - Index: O(log N)
 //   - Iterator: O(N)
+//   - Max, Min: O(1)
+//   - Union, Intersection, Difference, SymmetricDifference with another SortedSet of the same
+//     element type: O(N+M), a single linear merge of the two sorted slices, via the package-level
+//     functions (SortedSet implements the optional Unioner, Intersectioner, Differencer, and
+//     SymmetricDifferencer interfaces)
 //
 // The O(N) Add/Remove shifts make SortedSet best suited to read-heavy workloads (build once, query
 // many times). For add/remove-heavy workloads prefer Ordered or Map.
@@ -35,6 +40,12 @@ type SortedSet[M cmp.Ordered] struct {
 
 var _ OrderedSet[int] = new(SortedSet[int])
 var _ driver.Valuer = new(SortedSet[int])
+var _ Unioner[int] = new(SortedSet[int])
+var _ Intersectioner[int] = new(SortedSet[int])
+var _ Differencer[int] = new(SortedSet[int])
+var _ SymmetricDifferencer[int] = new(SortedSet[int])
+var _ Maxer[int] = new(SortedSet[int])
+var _ Minner[int] = new(SortedSet[int])
 
 // NewSortedSet returns an empty *SortedSet[M].
 func NewSortedSet[M cmp.Ordered]() *SortedSet[M] {
@@ -233,4 +244,122 @@ func (s *SortedSet[M]) UnmarshalJSON(d []byte) error {
 // returned.
 func (s *SortedSet[M]) Scan(src any) error {
 	return scanValue[M](src, s.Clear, s.UnmarshalJSON)
+}
+
+// Max implements Maxer: it returns the largest element, read in O(1) from the end of the sorted
+// backing slice. The second return value is false if the set is empty. Prefer the package-level
+// Max function, which uses this automatically.
+func (s *SortedSet[M]) Max() (M, bool) {
+	if s == nil || len(s.el) == 0 {
+		var zero M
+		return zero, false
+	}
+	return s.el[len(s.el)-1], true
+}
+
+// Min implements Minner: it returns the smallest element, read in O(1) from the start of the
+// sorted backing slice. The second return value is false if the set is empty. Prefer the
+// package-level Min function, which uses this automatically.
+func (s *SortedSet[M]) Min() (M, bool) {
+	if s == nil || len(s.el) == 0 {
+		var zero M
+		return zero, false
+	}
+	return s.el[0], true
+}
+
+// Union implements Unioner: when other is also a *SortedSet[M] it returns the union computed by a
+// single O(N+M) linear merge of the two sorted slices and true; otherwise it returns nil and
+// false. Prefer the package-level Union function, which uses this automatically and handles the
+// fallback.
+func (s *SortedSet[M]) Union(other Set[M]) (Set[M], bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok {
+		return nil, false
+	}
+	return &SortedSet[M]{el: mergeSorted(s.el, o.el, true, true, true)}, true
+}
+
+// Intersection implements Intersectioner: when other is also a *SortedSet[M] it returns the
+// intersection computed by a single O(N+M) linear merge of the two sorted slices and true;
+// otherwise it returns nil and false. Prefer the package-level Intersection function, which uses
+// this automatically and handles the fallback.
+func (s *SortedSet[M]) Intersection(other Set[M]) (Set[M], bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok {
+		return nil, false
+	}
+	return &SortedSet[M]{el: mergeSorted(s.el, o.el, false, false, true)}, true
+}
+
+// Difference implements Differencer: when other is also a *SortedSet[M] it returns the difference
+// computed by a single O(N+M) linear merge of the two sorted slices and true; otherwise it returns
+// nil and false. Prefer the package-level Difference function, which uses this automatically and
+// handles the fallback.
+func (s *SortedSet[M]) Difference(other Set[M]) (Set[M], bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok {
+		return nil, false
+	}
+	return &SortedSet[M]{el: mergeSorted(s.el, o.el, true, false, false)}, true
+}
+
+// SymmetricDifference implements SymmetricDifferencer: when other is also a *SortedSet[M] it
+// returns the symmetric difference computed by a single O(N+M) linear merge of the two sorted
+// slices and true; otherwise it returns nil and false. Prefer the package-level
+// SymmetricDifference function, which uses this automatically and handles the fallback.
+func (s *SortedSet[M]) SymmetricDifference(other Set[M]) (Set[M], bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok {
+		return nil, false
+	}
+	return &SortedSet[M]{el: mergeSorted(s.el, o.el, true, true, false)}, true
+}
+
+// mergeSorted linearly merges two ascending, duplicate-free slices into a new ascending,
+// duplicate-free slice, keeping the elements found only in a, only in b, or in both, according to
+// the flags. Each set-algebra operation is a flag combination: union keeps everything (true, true,
+// true), intersection keeps only the common elements (false, false, true), difference keeps the
+// elements only in a (true, false, false), and symmetric difference keeps the elements in exactly
+// one input (true, true, false).
+func mergeSorted[M cmp.Ordered](a, b []M, onlyA, onlyB, both bool) []M {
+	n := 0
+	if onlyA {
+		n += len(a)
+	}
+	if onlyB {
+		n += len(b)
+	}
+	if !onlyA && !onlyB && both { // intersection: bounded by the smaller input
+		n = min(len(a), len(b))
+	}
+	out := make([]M, 0, n)
+	var i, j int
+	for i < len(a) && j < len(b) {
+		switch {
+		case cmp.Less(a[i], b[j]):
+			if onlyA {
+				out = append(out, a[i])
+			}
+			i++
+		case cmp.Less(b[j], a[i]):
+			if onlyB {
+				out = append(out, b[j])
+			}
+			j++
+		default:
+			if both {
+				out = append(out, a[i])
+			}
+			i++
+			j++
+		}
+	}
+	if onlyA {
+		out = append(out, a[i:]...)
+	}
+	if onlyB {
+		out = append(out, b[j:]...)
+	}
+	return out
 }

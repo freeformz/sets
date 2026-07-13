@@ -561,3 +561,57 @@ func TestAlgebraOptionalInterfaces(t *testing.T) {
 		t.Fatal("BitSet.Union(non-BitSet) must report false")
 	}
 }
+
+func TestBitSet_MaxMin(t *testing.T) {
+	t.Parallel()
+
+	s := NewBitSetWith(-100, 3, 900)
+	if v, ok := s.Min(); !ok || v != -100 {
+		t.Fatalf("Min() = %d, %v; want -100, true", v, ok)
+	}
+	if v, ok := s.Max(); !ok || v != 900 {
+		t.Fatalf("Max() = %d, %v; want 900, true", v, ok)
+	}
+
+	// the package-level functions use the fast paths
+	if got := Max(Set[int](s)); got != 900 {
+		t.Fatalf("Max = %d, want 900", got)
+	}
+	if got := Min(Set[int](s)); got != -100 {
+		t.Fatalf("Min = %d, want -100", got)
+	}
+
+	// Removes can leave zero words at the span edges; the scans must skip them
+	s.Remove(900)
+	s.Remove(-100)
+	if v, ok := s.Max(); !ok || v != 3 {
+		t.Fatalf("Max() after Removes = %d, %v; want 3, true", v, ok)
+	}
+	if v, ok := s.Min(); !ok || v != 3 {
+		t.Fatalf("Min() after Removes = %d, %v; want 3, true", v, ok)
+	}
+
+	var empty BitSet[int] // zero value is ready to use
+	if _, ok := empty.Max(); ok {
+		t.Fatal("Max on an empty set: expected ok=false")
+	}
+	if _, ok := empty.Min(); ok {
+		t.Fatal("Min on an empty set: expected ok=false")
+	}
+
+	// sign-bit mapping edges (values kept close together: memory is proportional to the span)
+	u := NewBitSetWith[uint64](math.MaxUint64, math.MaxUint64-200)
+	if v, ok := u.Max(); !ok || v != math.MaxUint64 {
+		t.Fatalf("uint64 Max() = %d, %v; want MaxUint64, true", v, ok)
+	}
+	if v, ok := u.Min(); !ok || v != math.MaxUint64-200 {
+		t.Fatalf("uint64 Min() = %d, %v; want MaxUint64-200, true", v, ok)
+	}
+	i64 := NewBitSetWith[int64](math.MinInt64, math.MinInt64+7)
+	if v, ok := i64.Min(); !ok || v != math.MinInt64 {
+		t.Fatalf("int64 Min() = %d, %v; want MinInt64, true", v, ok)
+	}
+	if v, ok := i64.Max(); !ok || v != math.MinInt64+7 {
+		t.Fatalf("int64 Max() = %d, %v; want MinInt64+7, true", v, ok)
+	}
+}

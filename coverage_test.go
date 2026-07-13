@@ -138,6 +138,28 @@ func TestNilReceiverCardinality(t *testing.T) {
 	}
 }
 
+// TestNilReceiverMaxMin pins the nil-safety of the Maxer/Minner fast paths: a typed-nil receiver
+// must report ok=false (sending the package-level Max/Min down the generic path to the intended
+// "empty set" panic) rather than dereference its backing storage.
+func TestNilReceiverMaxMin(t *testing.T) {
+	t.Parallel()
+
+	var ss *SortedSet[int]
+	var bs *BitSet[int]
+	if _, ok := ss.Max(); ok {
+		t.Fatal("nil SortedSet Max() reported ok=true")
+	}
+	if _, ok := ss.Min(); ok {
+		t.Fatal("nil SortedSet Min() reported ok=true")
+	}
+	if _, ok := bs.Max(); ok {
+		t.Fatal("nil BitSet Max() reported ok=true")
+	}
+	if _, ok := bs.Min(); ok {
+		t.Fatal("nil BitSet Min() reported ok=true")
+	}
+}
+
 func TestZeroValueWrappers(t *testing.T) {
 	t.Parallel()
 
@@ -304,5 +326,35 @@ func TestRandomMisbehavingSet(t *testing.T) {
 
 	if _, ok := Random(lyingSet{New[int]()}); ok {
 		t.Fatal("Random on a set that iterates nothing returned ok=true")
+	}
+}
+
+// maxMinStub is a minimal third-party-style Set implementing Maxer and Minner with methods that
+// return sentinels, proving the package-level Max/Min honor implementations outside this package's
+// concrete types when they report true and fall back to the generic iteration when they report
+// false. The embedded Set provides the rest of the interface.
+type maxMinStub struct {
+	Set[int]
+	optimize bool
+}
+
+func (m *maxMinStub) Max() (int, bool) { return 999, m.optimize }
+func (m *maxMinStub) Min() (int, bool) { return -999, m.optimize }
+
+func TestMinMaxOptionalInterfaces(t *testing.T) {
+	t.Parallel()
+
+	inner := NewWith(1, 2, 3)
+	if got := Max(&maxMinStub{Set: inner, optimize: true}); got != 999 {
+		t.Fatalf("Max = %d, want the Maxer sentinel 999", got)
+	}
+	if got := Min(&maxMinStub{Set: inner, optimize: true}); got != -999 {
+		t.Fatalf("Min = %d, want the Minner sentinel -999", got)
+	}
+	if got := Max(&maxMinStub{Set: inner, optimize: false}); got != 3 {
+		t.Fatalf("Max fallback = %d, want 3", got)
+	}
+	if got := Min(&maxMinStub{Set: inner, optimize: false}); got != 1 {
+		t.Fatalf("Min fallback = %d, want 1", got)
 	}
 }
