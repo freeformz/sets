@@ -250,7 +250,7 @@ func (s *SortedSet[M]) Scan(src any) error {
 // backing slice. The second return value is false if the set is empty. Prefer the package-level
 // Max function, which uses this automatically.
 func (s *SortedSet[M]) Max() (M, bool) {
-	if len(s.el) == 0 {
+	if s == nil || len(s.el) == 0 {
 		var zero M
 		return zero, false
 	}
@@ -261,7 +261,7 @@ func (s *SortedSet[M]) Max() (M, bool) {
 // sorted backing slice. The second return value is false if the set is empty. Prefer the
 // package-level Min function, which uses this automatically.
 func (s *SortedSet[M]) Min() (M, bool) {
-	if len(s.el) == 0 {
+	if s == nil || len(s.el) == 0 {
 		var zero M
 		return zero, false
 	}
