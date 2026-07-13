@@ -31,6 +31,10 @@ import (
 //     element type: O(N+M), a single linear merge of the two sorted slices, via the package-level
 //     functions (SortedSet implements the optional Unioner, Intersectioner, Differencer, and
 //     SymmetricDifferencer interfaces)
+//   - Equal, Disjoint, Subset (and thus Superset) with another SortedSet of the same element
+//     type: O(N+M) worst case, a short-circuiting scan of the two sorted slices with no hashing
+//     or allocation, via the package-level functions (SortedSet implements the optional Equaler,
+//     Disjointer, and Subsetter interfaces)
 //
 // The O(N) Add/Remove shifts make SortedSet best suited to read-heavy workloads (build once, query
 // many times). For add/remove-heavy workloads prefer Ordered or Map.
@@ -46,6 +50,9 @@ var _ Differencer[int] = new(SortedSet[int])
 var _ SymmetricDifferencer[int] = new(SortedSet[int])
 var _ Maxer[int] = new(SortedSet[int])
 var _ Minner[int] = new(SortedSet[int])
+var _ Equaler[int] = new(SortedSet[int])
+var _ Disjointer[int] = new(SortedSet[int])
+var _ Subsetter[int] = new(SortedSet[int])
 
 // NewSortedSet returns an empty *SortedSet[M].
 func NewSortedSet[M cmp.Ordered]() *SortedSet[M] {
@@ -314,6 +321,65 @@ func (s *SortedSet[M]) SymmetricDifference(other Set[M]) (Set[M], bool) {
 		return nil, false
 	}
 	return &SortedSet[M]{el: mergeSorted(s.el, o.el, true, true, false)}, true
+}
+
+// Equal implements Equaler: when other is also a *SortedSet[M] it compares the two sorted backing
+// slices element-wise and reports handled; otherwise it reports false, false. Prefer the
+// package-level Equal function, which uses this automatically and handles the fallback.
+func (s *SortedSet[M]) Equal(other Set[M]) (bool, bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok || s == nil || o == nil { // typed-nil operands decline to the generic path
+		return false, false
+	}
+	return slices.Equal(s.el, o.el), true
+}
+
+// Disjoint implements Disjointer: when other is also a *SortedSet[M] it reports whether the two
+// sorted backing slices share an element, found by a short-circuiting two-pointer scan, and
+// handled; otherwise it reports false, false. Prefer the package-level Disjoint function, which
+// uses this automatically and handles the fallback.
+func (s *SortedSet[M]) Disjoint(other Set[M]) (bool, bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok || s == nil || o == nil { // typed-nil operands decline to the generic path
+		return false, false
+	}
+	var i, j int
+	for i < len(s.el) && j < len(o.el) {
+		switch {
+		case cmp.Less(s.el[i], o.el[j]):
+			i++
+		case cmp.Less(o.el[j], s.el[i]):
+			j++
+		default:
+			return false, true
+		}
+	}
+	return true, true
+}
+
+// Subset implements Subsetter: when other is also a *SortedSet[M] it reports whether every
+// element of the receiver appears in other, found by a short-circuiting two-pointer scan, and
+// handled; otherwise it reports false, false. Prefer the package-level Subset function, which
+// uses this automatically and handles the fallback.
+func (s *SortedSet[M]) Subset(other Set[M]) (bool, bool) {
+	o, ok := other.(*SortedSet[M])
+	if !ok || s == nil || o == nil { // typed-nil operands decline to the generic path
+		return false, false
+	}
+	if len(s.el) > len(o.el) {
+		return false, true
+	}
+	var j int
+	for _, v := range s.el {
+		for j < len(o.el) && cmp.Less(o.el[j], v) {
+			j++
+		}
+		if j == len(o.el) || cmp.Less(v, o.el[j]) {
+			return false, true
+		}
+		j++
+	}
+	return true, true
 }
 
 // mergeSorted linearly merges two ascending, duplicate-free slices into a new ascending,

@@ -358,3 +358,86 @@ func TestMinMaxOptionalInterfaces(t *testing.T) {
 		t.Fatalf("Min fallback = %d, want 1", got)
 	}
 }
+
+// predicateStub is a minimal third-party-style Set implementing Equaler, Disjointer, and
+// Subsetter with methods that return sentinel answers the generic path would never produce,
+// proving the package-level Equal/Disjoint/Subset/Superset honor implementations outside this
+// package's concrete types when they report handled and fall back to the generic path when they
+// decline. The embedded Set provides the rest of the interface.
+type predicateStub struct {
+	Set[int]
+	optimize bool
+}
+
+func (p *predicateStub) Equal(Set[int]) (bool, bool)    { return true, p.optimize }
+func (p *predicateStub) Disjoint(Set[int]) (bool, bool) { return true, p.optimize }
+func (p *predicateStub) Subset(Set[int]) (bool, bool)   { return true, p.optimize }
+
+func TestPredicateOptionalInterfaces(t *testing.T) {
+	t.Parallel()
+
+	// the stub holds {1,2,3}; against {1,2,4} every generic predicate answers false, so a true
+	// result can only have come from the stub's sentinel
+	other := NewWith(1, 2, 4)
+	opt := &predicateStub{Set: NewWith(1, 2, 3), optimize: true}
+	if !Equal[int](opt, other) {
+		t.Fatal("Equal ignored the Equaler sentinel")
+	}
+	if !Disjoint[int](opt, other) {
+		t.Fatal("Disjoint ignored the Disjointer sentinel")
+	}
+	if !Subset[int](opt, other) {
+		t.Fatal("Subset ignored the Subsetter sentinel")
+	}
+	if !Superset[int](other, opt) { // Superset consults its second operand's Subsetter
+		t.Fatal("Superset ignored the second operand's Subsetter sentinel")
+	}
+
+	fallback := &predicateStub{Set: NewWith(1, 2, 3), optimize: false}
+	if Equal[int](fallback, other) {
+		t.Fatal("Equal did not fall back on decline")
+	}
+	if Disjoint[int](fallback, other) {
+		t.Fatal("Disjoint did not fall back on decline")
+	}
+	if Subset[int](fallback, other) {
+		t.Fatal("Subset did not fall back on decline")
+	}
+	if Superset[int](other, fallback) {
+		t.Fatal("Superset did not fall back on decline")
+	}
+}
+
+// TestNilReceiverPredicates pins the nil-safety of the predicate fast paths: a typed-nil receiver
+// or operand must decline (handled=false) rather than dereference backing storage, sending the
+// package-level functions down the generic path.
+func TestNilReceiverPredicates(t *testing.T) {
+	t.Parallel()
+
+	var ss *SortedSet[int]
+	var bs *BitSet[int]
+	if _, ok := ss.Equal(NewSortedSetWith(1)); ok {
+		t.Fatal("nil SortedSet Equal() reported handled")
+	}
+	if _, ok := ss.Disjoint(NewSortedSetWith(1)); ok {
+		t.Fatal("nil SortedSet Disjoint() reported handled")
+	}
+	if _, ok := ss.Subset(NewSortedSetWith(1)); ok {
+		t.Fatal("nil SortedSet Subset() reported handled")
+	}
+	if _, ok := NewSortedSetWith(1).Equal(ss); ok {
+		t.Fatal("SortedSet Equal(nil) reported handled")
+	}
+	if _, ok := bs.Equal(NewBitSetWith(1)); ok {
+		t.Fatal("nil BitSet Equal() reported handled")
+	}
+	if _, ok := bs.Disjoint(NewBitSetWith(1)); ok {
+		t.Fatal("nil BitSet Disjoint() reported handled")
+	}
+	if _, ok := bs.Subset(NewBitSetWith(1)); ok {
+		t.Fatal("nil BitSet Subset() reported handled")
+	}
+	if _, ok := NewBitSetWith(1).Subset(bs); ok {
+		t.Fatal("BitSet Subset(nil) reported handled")
+	}
+}
