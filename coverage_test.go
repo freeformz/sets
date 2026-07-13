@@ -138,6 +138,28 @@ func TestNilReceiverCardinality(t *testing.T) {
 	}
 }
 
+// TestNilReceiverMaxMin pins the nil-safety of the Maxer/Minner fast paths: a typed-nil receiver
+// must report ok=false (sending the package-level Max/Min down the generic path to the intended
+// "empty set" panic) rather than dereference its backing storage.
+func TestNilReceiverMaxMin(t *testing.T) {
+	t.Parallel()
+
+	var ss *SortedSet[int]
+	var bs *BitSet[int]
+	if _, ok := ss.Max(); ok {
+		t.Fatal("nil SortedSet Max() reported ok=true")
+	}
+	if _, ok := ss.Min(); ok {
+		t.Fatal("nil SortedSet Min() reported ok=true")
+	}
+	if _, ok := bs.Max(); ok {
+		t.Fatal("nil BitSet Max() reported ok=true")
+	}
+	if _, ok := bs.Min(); ok {
+		t.Fatal("nil BitSet Min() reported ok=true")
+	}
+}
+
 func TestZeroValueWrappers(t *testing.T) {
 	t.Parallel()
 
