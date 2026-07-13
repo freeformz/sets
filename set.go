@@ -202,8 +202,52 @@ func SymmetricDifference[K comparable](a, b Set[K]) Set[K] {
 	return c
 }
 
+// Equaler is an optional interface that Set implementations can implement to provide an optimized
+// implementation of the package-level Equal function, which checks whether its first operand
+// implements it. The Disjointer and Subsetter interfaces work the same way for Disjoint and Subset
+// (and Superset, which is Subset with the operands swapped, so it consults its second operand's
+// Subsetter); implement whichever subset you can optimize. Both always-sorted implementations
+// implement all three: SortedSet with short-circuiting linear scans of the two sorted slices,
+// BitSet with word-wise comparisons.
+//
+// The boolean pattern and its contract are those of the set-algebra interfaces (see Unioner): the
+// second return reports whether the receiver handled the operand; on false the caller runs the
+// generic element-wise algorithm, so declining — typically anything but the implementation's own
+// concrete type — is always safe. The method must not modify the receiver or the operand, and
+// when reporting handled it must return the correct answer.
+type Equaler[M comparable] interface {
+	// Equal reports whether the receiver and other contain the same elements. The second return
+	// is false if other cannot be answered more efficiently than the generic element-wise
+	// fallback.
+	Equal(other Set[M]) (equal, handled bool)
+}
+
+// Disjointer is an optional interface providing an optimized Disjoint; see Equaler for the
+// contract shared by the predicate optimization interfaces.
+type Disjointer[M comparable] interface {
+	// Disjoint reports whether the receiver and other have no elements in common. The second
+	// return is false if other cannot be answered more efficiently than the generic element-wise
+	// fallback.
+	Disjoint(other Set[M]) (disjoint, handled bool)
+}
+
+// Subsetter is an optional interface providing an optimized Subset; see Equaler for the contract
+// shared by the predicate optimization interfaces.
+type Subsetter[M comparable] interface {
+	// Subset reports whether every element of the receiver is also in other. The second return is
+	// false if other cannot be answered more efficiently than the generic element-wise fallback.
+	Subset(other Set[M]) (subset, handled bool)
+}
+
 // Subset returns true if all elements in the first set are also in the second set.
+// If a implements Subsetter, its optimized Subset is used when it can handle b (e.g. two
+// SortedSets are compared by a single short-circuiting linear scan).
 func Subset[K comparable](a, b Set[K]) bool {
+	if sub, ok := a.(Subsetter[K]); ok {
+		if is, ok := sub.Subset(b); ok {
+			return is
+		}
+	}
 	if a.Cardinality() > b.Cardinality() {
 		return false
 	}
@@ -215,7 +259,8 @@ func Subset[K comparable](a, b Set[K]) bool {
 	return true
 }
 
-// Superset returns true if all elements in the second set are also in the first set.
+// Superset returns true if all elements in the second set are also in the first set. It is Subset
+// with the operands swapped, so b's Subsetter (if any) accelerates it.
 func Superset[K comparable](a, b Set[K]) bool {
 	if a.Cardinality() < b.Cardinality() {
 		return false
@@ -224,7 +269,14 @@ func Superset[K comparable](a, b Set[K]) bool {
 }
 
 // Equal returns true if the two sets contain the same elements.
+// If a implements Equaler, its optimized Equal is used when it can handle b (e.g. two SortedSets
+// compare their sorted backing slices directly).
 func Equal[K comparable](a, b Set[K]) bool {
+	if e, ok := a.(Equaler[K]); ok {
+		if eq, ok := e.Equal(b); ok {
+			return eq
+		}
+	}
 	// can't be equal if they don't have the same cardinality
 	if a.Cardinality() != b.Cardinality() {
 		return false
@@ -248,7 +300,14 @@ func ContainsSeq[K comparable](s Set[K], seq iter.Seq[K]) bool {
 }
 
 // Disjoint returns true if the two sets have no elements in common.
+// If a implements Disjointer, its optimized Disjoint is used when it can handle b (e.g. two
+// BitSets AND their overlapping words).
 func Disjoint[K comparable](a, b Set[K]) bool {
+	if d, ok := a.(Disjointer[K]); ok {
+		if dj, ok := d.Disjoint(b); ok {
+			return dj
+		}
+	}
 	for k := range a.Iterator {
 		if b.Contains(k) {
 			return false

@@ -58,6 +58,10 @@ type Integer interface {
 //     of the same element type: O(W) word-wise, via the package-level functions
 //     (BitSet implements the optional Unioner, Intersectioner, Differencer, and
 //     SymmetricDifferencer interfaces)
+//   - Equal, Disjoint, Subset (and thus Superset) with another BitSet of the
+//     same element type: O(W) word-wise with early exit, no iteration or
+//     hashing, via the package-level functions (BitSet implements the optional
+//     Equaler, Disjointer, and Subsetter interfaces)
 type BitSet[M Integer] struct {
 	words []uint64 // bit j of words[i] covers universe index (start+i)*64 + j
 	start uint64   // universe word index of words[0]; meaningful only when len(words) > 0
@@ -72,6 +76,9 @@ var _ Differencer[int] = new(BitSet[int])
 var _ SymmetricDifferencer[int] = new(BitSet[int])
 var _ Maxer[int] = new(BitSet[int])
 var _ Minner[int] = new(BitSet[int])
+var _ Equaler[int] = new(BitSet[int])
+var _ Disjointer[int] = new(BitSet[int])
+var _ Subsetter[int] = new(BitSet[int])
 
 // NewBitSet returns an empty *BitSet[M].
 func NewBitSet[M Integer]() *BitSet[M] {
@@ -540,6 +547,75 @@ func (s *BitSet[M]) Min() (M, bool) {
 	}
 	var zero M
 	return zero, false
+}
+
+// word returns the word covering universe word index w, or 0 when w is outside the span.
+func (s *BitSet[M]) word(w uint64) uint64 {
+	if w < s.start || w >= s.start+uint64(len(s.words)) {
+		return 0
+	}
+	return s.words[w-s.start]
+}
+
+// Equal implements Equaler: when other is also a *BitSet[M] it compares cardinalities and then
+// words and reports handled; otherwise it reports false, false. Prefer the package-level Equal
+// function, which uses this automatically and handles the fallback.
+func (s *BitSet[M]) Equal(other Set[M]) (bool, bool) {
+	o, ok := other.(*BitSet[M])
+	if !ok || s == nil || o == nil { // typed-nil operands decline to the generic path
+		return false, false
+	}
+	if s.card != o.card {
+		return false, true
+	}
+	// Scanning only s's span suffices: if every word there matches, o's population within that
+	// span equals s.card == o.card, so o cannot hold bits outside it. Removes may leave zero
+	// edge words, so equal sets can have different spans — the missing-word-is-zero comparison
+	// handles that.
+	for i, w := range s.words {
+		if w != o.word(s.start+uint64(i)) {
+			return false, true
+		}
+	}
+	return true, true
+}
+
+// Disjoint implements Disjointer: when other is also a *BitSet[M] it ANDs the words where the two
+// spans overlap and reports handled; otherwise it reports false, false. Prefer the package-level
+// Disjoint function, which uses this automatically and handles the fallback.
+func (s *BitSet[M]) Disjoint(other Set[M]) (bool, bool) {
+	o, ok := other.(*BitSet[M])
+	if !ok || s == nil || o == nil { // typed-nil operands decline to the generic path
+		return false, false
+	}
+	lo := max(s.start, o.start)
+	hi := min(s.start+uint64(len(s.words)), o.start+uint64(len(o.words))) // one past the overlap
+	for w := lo; w < hi; w++ {
+		if s.words[w-s.start]&o.words[w-o.start] != 0 {
+			return false, true
+		}
+	}
+	return true, true
+}
+
+// Subset implements Subsetter: when other is also a *BitSet[M] it reports whether the receiver
+// has any bit not set in other (word-wise AND NOT) and handled; otherwise it reports false,
+// false. Prefer the package-level Subset function, which uses this automatically and handles the
+// fallback.
+func (s *BitSet[M]) Subset(other Set[M]) (bool, bool) {
+	o, ok := other.(*BitSet[M])
+	if !ok || s == nil || o == nil { // typed-nil operands decline to the generic path
+		return false, false
+	}
+	if s.card > o.card {
+		return false, true
+	}
+	for i, w := range s.words {
+		if w&^o.word(s.start+uint64(i)) != 0 {
+			return false, true
+		}
+	}
+	return true, true
 }
 
 func (s *BitSet[M]) recount() {

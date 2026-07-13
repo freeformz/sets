@@ -615,3 +615,101 @@ func TestBitSet_MaxMin(t *testing.T) {
 		t.Fatalf("int64 Max() = %d, %v; want MinInt64+7, true", v, ok)
 	}
 }
+
+// TestBitSet_PredicateOps differentially tests the word-wise predicate fast paths against the
+// generic Map-based results, plus targeted span-shape cases the random draws can't reach.
+func TestBitSet_PredicateOps(t *testing.T) {
+	t.Parallel()
+
+	preds := []struct {
+		name string
+		f    func(a, b Set[int]) bool
+	}{
+		{"Equal", Equal[int]},
+		{"Disjoint", Disjoint[int]},
+		{"Subset", Subset[int]},
+		{"Superset", Superset[int]},
+	}
+
+	rapid.Check(t, func(t *rapid.T) {
+		av := rapid.SliceOfN(rapid.IntRange(-256, 256), 0, 24).Draw(t, "A")
+		var bv []int
+		switch rapid.SampledFrom([]string{"independent", "equal", "subset", "superset", "disjoint"}).Draw(t, "shape") {
+		case "independent":
+			bv = rapid.SliceOfN(rapid.IntRange(-256, 256), 0, 24).Draw(t, "B")
+		case "equal":
+			bv = slices.Clone(av)
+		case "subset":
+			for _, v := range av {
+				if rapid.Bool().Draw(t, "keep") {
+					bv = append(bv, v)
+				}
+			}
+		case "superset":
+			bv = append(slices.Clone(av), rapid.SliceOfN(rapid.IntRange(-512, 512), 0, 8).Draw(t, "extra")...)
+		case "disjoint":
+			bv = rapid.SliceOfN(rapid.IntRange(300, 700), 0, 24).Draw(t, "B")
+		}
+		ab, bb := NewBitSetWith(av...), NewBitSetWith(bv...)
+		am, bm := NewWith(av...), NewWith(bv...)
+
+		for _, p := range preds {
+			want := p.f(am, bm)
+			if got := p.f(ab, bb); got != want {
+				t.Fatalf("%s(bitset, bitset) = %v, want %v (A=%v B=%v)", p.name, got, want, av, bv)
+			}
+			if got := p.f(ab, bm); got != want {
+				t.Fatalf("%s(bitset, map) = %v, want %v (A=%v B=%v)", p.name, got, want, av, bv)
+			}
+		}
+	})
+
+	// Removes retain the span, so equal sets can have different spans; both orientations must
+	// still compare equal via the missing-word-is-zero comparison.
+	wide := NewBitSetWith(100, 200, 3000, -3000)
+	wide.Remove(3000)
+	wide.Remove(-3000)
+	tight := NewBitSetWith(100, 200)
+	if eq, ok := wide.Equal(tight); !ok || !eq {
+		t.Fatalf("wide.Equal(tight) = %v, %v; want true, true", eq, ok)
+	}
+	if eq, ok := tight.Equal(wide); !ok || !eq {
+		t.Fatalf("tight.Equal(wide) = %v, %v; want true, true", eq, ok)
+	}
+
+	// non-overlapping spans are trivially disjoint (the overlap loop runs zero times)
+	lowSpan, highSpan := NewBitSetWith(1, 2), NewBitSetWith(100000, 100001)
+	if dj, ok := lowSpan.Disjoint(highSpan); !ok || !dj {
+		t.Fatalf("Disjoint(non-overlapping spans) = %v, %v; want true, true", dj, ok)
+	}
+
+	// subset across differing spans, including bits outside the superset's span
+	if sub, ok := tight.Subset(wide); !ok || !sub {
+		t.Fatalf("tight.Subset(wide) = %v, %v; want true, true", sub, ok)
+	}
+	outside := NewBitSetWith(100, 200, 100000)
+	if sub, ok := outside.Subset(tight); !ok || sub {
+		t.Fatalf("outside.Subset(tight) = %v, %v; want false, true", sub, ok)
+	}
+
+	// sign-bit mapping extremes (values kept close together: memory is proportional to the span)
+	u1 := NewBitSetWith[uint64](math.MaxUint64, math.MaxUint64-70)
+	u2 := NewBitSetWith[uint64](math.MaxUint64 - 70)
+	if sub, ok := u2.Subset(u1); !ok || !sub {
+		t.Fatalf("uint64 Subset = %v, %v; want true, true", sub, ok)
+	}
+	if eq, ok := u1.Equal(u2); !ok || eq {
+		t.Fatalf("uint64 Equal = %v, %v; want false, true", eq, ok)
+	}
+
+	// BitSet's predicate methods report handled=false for non-BitSet operands
+	if _, ok := NewBitSetWith(1).Equal(NewWith(1)); ok {
+		t.Fatal("BitSet.Equal(non-BitSet) must report false")
+	}
+	if _, ok := NewBitSetWith(1).Disjoint(NewWith(2)); ok {
+		t.Fatal("BitSet.Disjoint(non-BitSet) must report false")
+	}
+	if _, ok := NewBitSetWith(1).Subset(NewWith(1)); ok {
+		t.Fatal("BitSet.Subset(non-BitSet) must report false")
+	}
+}

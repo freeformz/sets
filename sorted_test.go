@@ -560,3 +560,69 @@ func TestSortedSet_MaxMin(t *testing.T) {
 		t.Fatal("Min on an empty set: expected ok=false")
 	}
 }
+
+// TestSortedSet_PredicateOps differentially tests the scan-based predicate fast paths against the
+// generic Map-based results, for both pure-SortedSet operands (fast path) and mixed operands
+// (generic fallback). Related operand shapes (equal, subset, superset, disjoint) are drawn
+// explicitly — independent draws would rarely produce them.
+func TestSortedSet_PredicateOps(t *testing.T) {
+	t.Parallel()
+
+	preds := []struct {
+		name string
+		f    func(a, b Set[int]) bool
+	}{
+		{"Equal", Equal[int]},
+		{"Disjoint", Disjoint[int]},
+		{"Subset", Subset[int]},
+		{"Superset", Superset[int]},
+	}
+
+	rapid.Check(t, func(t *rapid.T) {
+		av := rapid.SliceOfN(rapid.IntRange(0, 32), 0, 24).Draw(t, "A")
+		var bv []int
+		switch rapid.SampledFrom([]string{"independent", "equal", "subset", "superset", "disjoint"}).Draw(t, "shape") {
+		case "independent":
+			bv = rapid.SliceOfN(rapid.IntRange(0, 32), 0, 24).Draw(t, "B")
+		case "equal":
+			bv = slices.Clone(av)
+		case "subset":
+			for _, v := range av {
+				if rapid.Bool().Draw(t, "keep") {
+					bv = append(bv, v)
+				}
+			}
+		case "superset":
+			bv = append(slices.Clone(av), rapid.SliceOfN(rapid.IntRange(0, 48), 0, 8).Draw(t, "extra")...)
+		case "disjoint":
+			bv = rapid.SliceOfN(rapid.IntRange(33, 64), 0, 24).Draw(t, "B")
+		}
+		as, bs := NewSortedSetWith(av...), NewSortedSetWith(bv...)
+		am, bm := NewWith(av...), NewWith(bv...)
+
+		for _, p := range preds {
+			want := p.f(am, bm)
+			if got := p.f(as, bs); got != want {
+				t.Fatalf("%s(sorted, sorted) = %v, want %v (A=%v B=%v)", p.name, got, want, av, bv)
+			}
+			// mixed operands fall back to the generic path
+			if got := p.f(as, bm); got != want {
+				t.Fatalf("%s(sorted, map) = %v, want %v (A=%v B=%v)", p.name, got, want, av, bv)
+			}
+			if got := p.f(am, bs); got != want {
+				t.Fatalf("%s(map, sorted) = %v, want %v (A=%v B=%v)", p.name, got, want, av, bv)
+			}
+		}
+	})
+
+	// SortedSet's predicate methods report handled=false for non-SortedSet operands
+	if _, ok := NewSortedSetWith(1).Equal(NewWith(1)); ok {
+		t.Fatal("SortedSet.Equal(non-SortedSet) must report false")
+	}
+	if _, ok := NewSortedSetWith(1).Disjoint(NewWith(2)); ok {
+		t.Fatal("SortedSet.Disjoint(non-SortedSet) must report false")
+	}
+	if _, ok := NewSortedSetWith(1).Subset(NewWith(1)); ok {
+		t.Fatal("SortedSet.Subset(non-SortedSet) must report false")
+	}
+}

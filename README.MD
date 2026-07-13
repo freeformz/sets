@@ -205,6 +205,12 @@ can find an extreme element without iterating (both `SortedSet` and `BitSet` ans
 implement them, and the package-level functions fall back to the generic O(n) iteration when the method reports false.
 See the `Maxer` godoc for the contract.
 
+The predicates `Equal`, `Disjoint`, and `Subset` consult the optional `Equaler[M]`/`Disjointer[M]`/`Subsetter[M]`
+interfaces the same way (`Superset` is `Subset` with the operands swapped, so it consults its *second* operand's
+`Subsetter`). Both always-sorted implementations implement all three without hashing or allocating: `SortedSet` with
+short-circuiting scans of the two sorted slices, `BitSet` with word-wise comparisons. See the `Equaler` godoc for the
+contract.
+
 ## TODOs
 
 * Ordered rapid tests that test the OrderedSet bits like the normal Set bits are tested.
