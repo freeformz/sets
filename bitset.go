@@ -510,6 +510,10 @@ func (s *BitSet[M]) SymmetricDifference(other Set[M]) (Set[M], bool) {
 // span for the highest set bit. The second return value is false if the set is empty. Prefer the
 // package-level Max function, which uses this automatically.
 func (s *BitSet[M]) Max() (M, bool) {
+	if s == nil || s.card == 0 {
+		var zero M
+		return zero, false
+	}
 	for i := len(s.words) - 1; i >= 0; i-- {
 		if w := s.words[i]; w != 0 {
 			b := 63 - bits.LeadingZeros64(w)
@@ -524,6 +528,10 @@ func (s *BitSet[M]) Max() (M, bool) {
 // the span for the lowest set bit. The second return value is false if the set is empty. Prefer
 // the package-level Min function, which uses this automatically.
 func (s *BitSet[M]) Min() (M, bool) {
+	if s == nil || s.card == 0 {
+		var zero M
+		return zero, false
+	}
 	for i, w := range s.words {
 		if w != 0 {
 			b := bits.TrailingZeros64(w)

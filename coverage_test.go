@@ -323,16 +323,16 @@ func TestMinMaxOptionalInterfaces(t *testing.T) {
 	t.Parallel()
 
 	inner := NewWith(1, 2, 3)
-	if got := Max[int](&maxMinStub{Set: inner, optimize: true}); got != 999 {
+	if got := Max(&maxMinStub{Set: inner, optimize: true}); got != 999 {
 		t.Fatalf("Max = %d, want the Maxer sentinel 999", got)
 	}
-	if got := Min[int](&maxMinStub{Set: inner, optimize: true}); got != -999 {
+	if got := Min(&maxMinStub{Set: inner, optimize: true}); got != -999 {
 		t.Fatalf("Min = %d, want the Minner sentinel -999", got)
 	}
-	if got := Max[int](&maxMinStub{Set: inner, optimize: false}); got != 3 {
+	if got := Max(&maxMinStub{Set: inner, optimize: false}); got != 3 {
 		t.Fatalf("Max fallback = %d, want 3", got)
 	}
-	if got := Min[int](&maxMinStub{Set: inner, optimize: false}); got != 1 {
+	if got := Min(&maxMinStub{Set: inner, optimize: false}); got != 1 {
 		t.Fatalf("Min fallback = %d, want 1", got)
 	}
 }

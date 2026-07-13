@@ -330,7 +330,7 @@ func mergeSorted[M cmp.Ordered](a, b []M, onlyA, onlyB, both bool) []M {
 	if onlyB {
 		n += len(b)
 	}
-	if !onlyA && !onlyB { // intersection: bounded by the smaller input
+	if !onlyA && !onlyB && both { // intersection: bounded by the smaller input
 		n = min(len(a), len(b))
 	}
 	out := make([]M, 0, n)
