@@ -95,10 +95,16 @@ def plot_operation(op, op_data, output_dir):
             if not impl_data:
                 continue
 
+            # The log y-axis can't represent zero, and a min of 0.00 is a
+            # timer-resolution artifact (single-shot timing of a tiny workload,
+            # further rounded by the CSV's 2-decimal format), not a real
+            # measurement — collapse the band to the average there rather than
+            # invent a fake floor.
+            eps = 0.01
             sizes = [r['size'] for r in impl_data]
-            avgs = [r['avg'] for r in impl_data]
-            mins = [r['min'] for r in impl_data]
-            maxs = [r['max'] for r in impl_data]
+            avgs = [max(r['avg'], eps) for r in impl_data]
+            mins = [r['min'] if r['min'] > 0 else a for r, a in zip(impl_data, avgs)]
+            maxs = [max(r['max'], eps) for r in impl_data]
 
             color = COLORS.get(impl, '#000000')
             marker = MARKERS.get(impl, 'o')
