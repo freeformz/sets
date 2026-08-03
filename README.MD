@@ -108,6 +108,17 @@ Benchmarks cover all 7 set implementations (`Map`, `SyncMap`, `Locked`, `Ordered
 
 ### Running Benchmarks
 
+To regenerate `benchmarks/bench_stats.csv` and the charts below in one step (requires
+python3 with matplotlib, or [uv](https://docs.astral.sh/uv/) which provisions it on the
+fly; the benchmark step takes on the order of an hour):
+
+```console
+./benchmarks/regenerate.sh              # full run: benchmarks + charts
+./benchmarks/regenerate.sh --plot-only  # re-plot charts from the existing CSV
+```
+
+The individual pieces:
+
 ```console
 # Standard Go benchmarks
 go test -bench=. -benchmem ./...

@@ -20,15 +20,31 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 
+# Colorblind-safe categorical palette (validated: adjacent-pair CVD deltaE >= 8,
+# normal-vision deltaE >= 15, all slots within the lightness band on a light surface).
+# Each series also gets a distinct marker so identity never rides on color alone.
 COLORS = {
-    'Map': '#2196F3',
-    'SyncMap': '#F44336',
-    'Locked': '#4CAF50',
-    'Ordered': '#FF9800',
-    'LockedOrdered': '#9C27B0',
+    'Map': '#2a78d6',            # blue
+    'SyncMap': '#eb6834',        # orange
+    'Locked': '#1baf7a',         # aqua
+    'Ordered': '#eda100',        # yellow
+    'SortedSet': '#e87ba4',      # magenta
+    'LockedOrdered': '#008300',  # green
+    'BitSet': '#4a3aa7',         # violet
 }
 
-IMPL_ORDER = ['Map', 'SyncMap', 'Locked', 'Ordered', 'LockedOrdered']
+MARKERS = {
+    'Map': 'o',
+    'SyncMap': 's',
+    'Locked': '^',
+    'Ordered': 'D',
+    'SortedSet': 'v',
+    'LockedOrdered': 'P',
+    'BitSet': 'X',
+}
+
+# Matches the declaration order of benchImpls in bench_test.go.
+IMPL_ORDER = ['Map', 'SyncMap', 'Locked', 'Ordered', 'SortedSet', 'LockedOrdered', 'BitSet']
 
 
 def read_csv(path):
@@ -61,10 +77,17 @@ def plot_operation(op, op_data, output_dir):
     fig, axes = plt.subplots(1, len(types), figsize=(7 * len(types), 6), sharey=True, squeeze=False)
     fig.suptitle(op, fontsize=16, fontweight='bold')
 
+    # Plot known impls in fixed order, then any impls present in the data but
+    # missing from IMPL_ORDER (never silently drop a series).
+    data_impls = set(r['impl'] for r in op_data)
+    extra_impls = sorted(data_impls - set(IMPL_ORDER))
+    if extra_impls:
+        print(f'  WARNING: impls not in IMPL_ORDER (plotted in black): {", ".join(extra_impls)}')
+
     for ax, typ in zip(axes[0], types):
         type_data = [r for r in op_data if r['type'] == typ]
 
-        for impl in IMPL_ORDER:
+        for impl in IMPL_ORDER + extra_impls:
             impl_data = sorted(
                 [r for r in type_data if r['impl'] == impl],
                 key=lambda r: r['size'],
@@ -72,16 +95,27 @@ def plot_operation(op, op_data, output_dir):
             if not impl_data:
                 continue
 
+            # The log y-axis can't represent zero, and a min of 0.00 is a
+            # timer-resolution artifact (single-shot timing of a tiny workload,
+            # further rounded by the CSV's 2-decimal format), not a real
+            # measurement — collapse the band to the average there rather than
+            # invent a fake floor.
+            eps = 0.01
             sizes = [r['size'] for r in impl_data]
-            avgs = [r['avg'] for r in impl_data]
-            mins = [r['min'] for r in impl_data]
-            maxs = [r['max'] for r in impl_data]
+            avgs = [max(r['avg'], eps) for r in impl_data]
+            mins = [r['min'] if r['min'] > 0 else a for r, a in zip(impl_data, avgs)]
+            maxs = [max(r['max'], eps) for r in impl_data]
 
             color = COLORS.get(impl, '#000000')
-            ax.plot(sizes, avgs, 'o-', label=impl, color=color, linewidth=2, markersize=4)
+            marker = MARKERS.get(impl, 'o')
+            ax.plot(sizes, avgs, label=impl, color=color, linewidth=2,
+                    marker=marker, markersize=5)
             ax.fill_between(sizes, mins, maxs, alpha=0.12, color=color)
 
+        # log-log: series span many orders of magnitude (word-wise BitSet ops vs
+        # element-wise iteration); a linear y-axis flattens all but the slowest.
         ax.set_xscale('log')
+        ax.set_yscale('log')
         ax.set_xlabel('Set Size')
         ax.set_title(f'element type: {typ}')
         ax.grid(True, alpha=0.3, which='both')
