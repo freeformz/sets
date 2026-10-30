@@ -4,6 +4,8 @@ on:
     branches:
       - main
 name: CI
+env:
+  GOTOOLCHAIN: local
 jobs:
   checks:
     strategy:
