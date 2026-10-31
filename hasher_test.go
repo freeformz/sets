@@ -88,7 +88,8 @@ func TestSetHasherUsesSeed(t *testing.T) {
 	t.Parallel()
 
 	s := NewWith(1, 2, 3)
-	if hashSet[int](maphash.MakeSeed(), s) == hashSet[int](maphash.MakeSeed(), s) {
+	seedA, seedB := maphash.MakeSeed(), maphash.MakeSeed()
+	if hashSet[int](seedA, s) == hashSet[int](seedB, s) {
 		t.Error("different seeds produced the same hash")
 	}
 
