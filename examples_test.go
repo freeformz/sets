@@ -3,6 +3,7 @@ package sets
 import (
 	"encoding/json"
 	"fmt"
+	"hash/maphash"
 	"slices"
 
 	"github.com/google/go-cmp/cmp"
@@ -1063,4 +1064,53 @@ func ExampleBitSet_Range() {
 	// 20
 	// 30
 	// 40
+}
+
+// Find the distinct sets of permissions in use across a list of roles. Roles are grouped by hash,
+// and Equal settles any hash collisions.
+func ExampleSetHasher() {
+	roles := []Set[string]{
+		NewWith("read", "write"),
+		NewOrderedWith("write", "read"), // same permissions as the first role
+		NewSortedSetWith("read"),
+		NewWith("read"), // same permissions as the third role
+	}
+
+	var hasher SetHasher[string]
+	seed := maphash.MakeSeed()
+	seen := make(map[uint64][]Set[string])
+	var distinct int
+
+	for _, role := range roles {
+		var h maphash.Hash
+		h.SetSeed(seed)
+		hasher.Hash(&h, role)
+		key := h.Sum64()
+
+		isRole := func(s Set[string]) bool { return hasher.Equal(s, role) }
+		if !slices.ContainsFunc(seen[key], isRole) {
+			seen[key] = append(seen[key], role)
+			distinct++
+		}
+	}
+
+	fmt.Println(distinct)
+	// Output:
+	// 2
+}
+
+func ExampleDistinct() {
+	roles := []Set[string]{
+		NewWith("read", "write"),
+		NewOrderedWith("write", "read"), // same permissions as the first role
+		NewSortedSetWith("read"),
+		NewWith("read"), // same permissions as the third role
+	}
+
+	for permissions := range Distinct(slices.Values(roles)) {
+		fmt.Println(slices.Sorted(permissions.Iterator))
+	}
+	// Output:
+	// [read write]
+	// [read]
 }
