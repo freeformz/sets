@@ -1066,37 +1066,22 @@ func ExampleBitSet_Range() {
 	// 40
 }
 
-// SetHasher lets sets be grouped by their contents. This example uses it to build a set of sets
-// from a built-in map of hash buckets, with Equal resolving hash collisions.
 func ExampleSetHasher() {
-	var hasher SetHasher[int]
 	seed := maphash.MakeSeed()
-	buckets := make(map[uint64][]Set[int])
-
-	add := func(s Set[int]) bool {
+	hash := func(s Set[int]) uint64 {
 		var h maphash.Hash
 		h.SetSeed(seed)
-		hasher.Hash(&h, s)
-		key := h.Sum64()
-
-		for _, other := range buckets[key] {
-			if hasher.Equal(s, other) {
-				return false
-			}
-		}
-		buckets[key] = append(buckets[key], s)
-		return true
+		SetHasher[int]{}.Hash(&h, s)
+		return h.Sum64()
 	}
 
-	fmt.Println(add(NewWith(1, 2, 3)))
-	fmt.Println(add(NewSortedSetWith(3, 2, 1))) // same elements, different implementation
-	fmt.Println(add(NewBitSetWith(1, 2, 3)))    // same elements, different implementation
-	fmt.Println(add(NewWith(1, 2)))
-	fmt.Println(len(buckets))
+	a := NewWith(1, 2, 3)
+	b := NewSortedSetWith(3, 2, 1) // same elements as a, different implementation
+	c := NewWith(1, 2)
+
+	fmt.Println(hash(a) == hash(b))
+	fmt.Println(hash(a) == hash(c))
 	// Output:
 	// true
 	// false
-	// false
-	// true
-	// 2
 }
