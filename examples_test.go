@@ -1066,22 +1066,35 @@ func ExampleBitSet_Range() {
 	// 40
 }
 
+// Find the distinct sets of permissions in use across a list of roles. Roles are grouped by hash,
+// and Equal settles any hash collisions.
 func ExampleSetHasher() {
-	seed := maphash.MakeSeed()
-	hash := func(s Set[int]) uint64 {
-		var h maphash.Hash
-		h.SetSeed(seed)
-		SetHasher[int]{}.Hash(&h, s)
-		return h.Sum64()
+	roles := []Set[string]{
+		NewWith("read", "write"),
+		NewOrderedWith("write", "read"), // same permissions as the first role
+		NewSortedSetWith("read"),
+		NewWith("read"), // same permissions as the third role
 	}
 
-	a := NewWith(1, 2, 3)
-	b := NewSortedSetWith(3, 2, 1) // same elements as a, different implementation
-	c := NewWith(1, 2)
+	var hasher SetHasher[string]
+	seed := maphash.MakeSeed()
+	seen := make(map[uint64][]Set[string])
+	distinct := 0
 
-	fmt.Println(hash(a) == hash(b))
-	fmt.Println(hash(a) == hash(c))
+	for _, role := range roles {
+		var h maphash.Hash
+		h.SetSeed(seed)
+		hasher.Hash(&h, role)
+		key := h.Sum64()
+
+		isRole := func(s Set[string]) bool { return hasher.Equal(s, role) }
+		if !slices.ContainsFunc(seen[key], isRole) {
+			seen[key] = append(seen[key], role)
+			distinct++
+		}
+	}
+
+	fmt.Println(distinct)
 	// Output:
-	// true
-	// false
+	// 2
 }
