@@ -3,6 +3,7 @@ package sets
 import (
 	"encoding/json"
 	"fmt"
+	"hash/maphash"
 	"slices"
 
 	"github.com/google/go-cmp/cmp"
@@ -1063,4 +1064,39 @@ func ExampleBitSet_Range() {
 	// 20
 	// 30
 	// 40
+}
+
+// SetHasher lets sets be grouped by their contents. This example uses it to build a set of sets
+// from a built-in map of hash buckets, with Equal resolving hash collisions.
+func ExampleSetHasher() {
+	var hasher SetHasher[int]
+	seed := maphash.MakeSeed()
+	buckets := make(map[uint64][]Set[int])
+
+	add := func(s Set[int]) bool {
+		var h maphash.Hash
+		h.SetSeed(seed)
+		hasher.Hash(&h, s)
+		key := h.Sum64()
+
+		for _, other := range buckets[key] {
+			if hasher.Equal(s, other) {
+				return false
+			}
+		}
+		buckets[key] = append(buckets[key], s)
+		return true
+	}
+
+	fmt.Println(add(NewWith(1, 2, 3)))
+	fmt.Println(add(NewSortedSetWith(3, 2, 1))) // same elements, different implementation
+	fmt.Println(add(NewBitSetWith(1, 2, 3)))    // same elements, different implementation
+	fmt.Println(add(NewWith(1, 2)))
+	fmt.Println(len(buckets))
+	// Output:
+	// true
+	// false
+	// false
+	// true
+	// 2
 }

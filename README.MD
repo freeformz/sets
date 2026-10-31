@@ -55,6 +55,12 @@ Sets of types that don't have a JSON equivalent can't be marshaled to and/or fro
 
 All set types implement `sql.Scanner` and `driver.Valuer`, allowing them to be used directly with `database/sql`. Values are stored as JSON arrays.
 
+## Hashing
+
+`sets.SetHasher[M]` hashes and compares sets by their contents, so a set can be an element of a hash-based data structure. It implements the `maphash.Hasher` interface from Go 1.27, though `SetHasher` itself works on any supported Go version. Sets holding the same elements hash alike, whatever their implementation or iteration order, including ordered sets that differ only in order. Don't modify a set while it's held in a hash-based data structure, as its hash changes with its elements. See the [SetHasher example](https://pkg.go.dev/github.com/freeformz/sets#example-SetHasher).
+
+`SetHasher` relies on the elements' `==` relation, which every set in this package uses. It isn't suitable for a custom Set whose `Contains` uses a different equivalence, such as case-insensitive strings, because `sets.Equal` can then report sets as equal that hash differently.
+
 ## Set Helpers
 
 These helpers work on all Set types, including OrderedSets.
