@@ -1079,7 +1079,7 @@ func ExampleSetHasher() {
 	var hasher SetHasher[string]
 	seed := maphash.MakeSeed()
 	seen := make(map[uint64][]Set[string])
-	distinct := 0
+	var distinct int
 
 	for _, role := range roles {
 		var h maphash.Hash
