@@ -57,7 +57,7 @@ All set types implement `sql.Scanner` and `driver.Valuer`, allowing them to be u
 
 ## Hashing
 
-`sets.SetHasher[M]` hashes and compares sets by their contents, so a set can be an element of a hash-based data structure. It implements the `maphash.Hasher` interface from Go 1.27, though `SetHasher` itself works on any supported Go version. Sets holding the same elements hash alike, whatever their implementation or iteration order, including ordered sets that differ only in order. Don't modify a set while it's held in a hash-based data structure, as its hash changes with its elements. See the [SetHasher example](https://pkg.go.dev/github.com/freeformz/sets#example-SetHasher).
+`sets.SetHasher[M]` hashes and compares sets by their contents, so a set can be an element of a hash-based data structure. It implements the `maphash.Hasher` interface from Go 1.27, though `SetHasher` itself works on any supported Go version. Sets holding the same elements hash alike, whatever their implementation or iteration order, including ordered sets that differ only in order. Don't modify a set while it's held in a hash-based data structure, as its hash changes with its elements. To drop duplicate sets from a sequence, use `sets.Distinct`, which is built on `SetHasher`. See the [Distinct](https://pkg.go.dev/github.com/freeformz/sets#example-Distinct) and [SetHasher](https://pkg.go.dev/github.com/freeformz/sets#example-SetHasher) examples.
 
 `SetHasher` relies on the elements' `==` relation, which every set in this package uses. It isn't suitable for a custom Set whose `Contains` uses a different equivalence, such as case-insensitive strings, because `sets.Equal` can then report sets as equal that hash differently.
 
@@ -94,6 +94,7 @@ These helpers work on all Set types, including OrderedSets.
 * `sets.ContainsAll(aSet, elements...)` : Returns true if the set contains all of the provided elements.
 * `sets.ContainsAny(aSet, elements...)` : Returns true if the set contains at least one of the provided elements.
 * `sets.Random(aSet)` : Returns a random element from the set without removing it. Uses indexed access for ordered sets (O(log n) or better for this package's implementations), O(n) for unordered sets.
+* `sets.Distinct(sequenceOfSets)` : Returns an iterator over the sets in the sequence, skipping any set equal to one already seen. Keeps the first occurrence of each.
 
 ## OrderedSet Helpers
 

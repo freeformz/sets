@@ -1,6 +1,7 @@
 package sets
 
 import (
+	"fmt"
 	"hash/maphash"
 	"math"
 	"slices"
@@ -161,5 +162,74 @@ func TestSetHasherElementTypes(t *testing.T) {
 	b := NewLockedWith(point{3, 4, "b"}, point{1, 2, "a"})
 	if hashSet[point](seed, a) != hashSet[point](seed, b) {
 		t.Error("equal struct sets hash differently")
+	}
+}
+
+func TestDistinct(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		lists := rapid.SliceOf(rapid.SliceOfN(rapid.IntRange(0, 4), 0, 4)).Draw(t, "lists")
+		names := []string{"Map", "SyncMap", "Locked", "Ordered", "LockedOrdered", "SortedSet", "BitSet"}
+
+		// The input mixes implementations, and want holds the first set seen with each contents.
+		var input, want []Set[int]
+		seen := make(map[string]bool)
+		for i, list := range lists {
+			s := hasherImpls(list)[names[i%len(names)]]
+			input = append(input, s)
+
+			key := fmt.Sprint(slices.Sorted(s.Iterator))
+			if !seen[key] {
+				seen[key] = true
+				want = append(want, s)
+			}
+		}
+
+		got := slices.Collect(Distinct(slices.Values(input)))
+		if !slices.Equal(got, want) {
+			t.Fatalf("Distinct(%v) = %v, want %v", input, got, want)
+		}
+	})
+}
+
+func TestDistinctIteratesRepeatedly(t *testing.T) {
+	t.Parallel()
+
+	seq := Distinct(slices.Values([]Set[int]{NewWith(1), NewWith(1), NewWith(2)}))
+	for range 2 {
+		if got := len(slices.Collect(seq)); got != 2 {
+			t.Errorf("got %d sets, want 2", got)
+		}
+	}
+}
+
+func TestDistinctEmpty(t *testing.T) {
+	t.Parallel()
+
+	if got := slices.Collect(Distinct(slices.Values[[]Set[int]](nil))); got != nil {
+		t.Errorf("got %v, want nil", got)
+	}
+}
+
+// TestDistinctIsLazy verifies Distinct reads no further than it needs to and stops with its consumer.
+func TestDistinctIsLazy(t *testing.T) {
+	t.Parallel()
+
+	var pulled int
+	input := func(yield func(Set[int]) bool) {
+		for i := range 10 {
+			pulled++
+			if !yield(NewWith(i)) {
+				return
+			}
+		}
+	}
+
+	for range Distinct(input) {
+		break
+	}
+	if pulled != 1 {
+		t.Errorf("pulled %d sets, want 1", pulled)
 	}
 }

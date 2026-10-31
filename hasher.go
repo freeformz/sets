@@ -1,6 +1,10 @@
 package sets
 
-import "hash/maphash"
+import (
+	"hash/maphash"
+	"iter"
+	"slices"
+)
 
 // SetHasher hashes and compares sets by their contents, so a set can be used as an element of a
 // hash-based data structure. Set values are otherwise compared by identity: two *Map values
@@ -42,4 +46,32 @@ func (SetHasher[M]) Hash(h *maphash.Hash, s Set[M]) {
 // Equal reports whether x and y contain the same elements. See the package-level Equal function.
 func (SetHasher[M]) Equal(x, y Set[M]) bool {
 	return Equal(x, y)
+}
+
+// Distinct returns an iterator over the sets in seq, skipping any set Equal to one already yielded.
+// The first occurrence of each is kept, in the order of seq. Sets are compared as they are by
+// SetHasher, so its limits apply: the sets must not be modified during iteration.
+func Distinct[K comparable](seq iter.Seq[Set[K]]) iter.Seq[Set[K]] {
+	return func(yield func(Set[K]) bool) {
+		var hasher SetHasher[K]
+		seed := maphash.MakeSeed()
+		seen := make(map[uint64][]Set[K])
+
+		for s := range seq {
+			var h maphash.Hash
+			h.SetSeed(seed)
+			hasher.Hash(&h, s)
+			key := h.Sum64()
+
+			// Sets with the same hash aren't necessarily equal.
+			isS := func(other Set[K]) bool { return hasher.Equal(other, s) }
+			if slices.ContainsFunc(seen[key], isS) {
+				continue
+			}
+			seen[key] = append(seen[key], s)
+			if !yield(s) {
+				return
+			}
+		}
+	}
 }

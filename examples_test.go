@@ -1098,3 +1098,19 @@ func ExampleSetHasher() {
 	// Output:
 	// 2
 }
+
+func ExampleDistinct() {
+	roles := []Set[string]{
+		NewWith("read", "write"),
+		NewOrderedWith("write", "read"), // same permissions as the first role
+		NewSortedSetWith("read"),
+		NewWith("read"), // same permissions as the third role
+	}
+
+	for permissions := range Distinct(slices.Values(roles)) {
+		fmt.Println(slices.Sorted(permissions.Iterator))
+	}
+	// Output:
+	// [read write]
+	// [read]
+}
